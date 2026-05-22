@@ -87,27 +87,10 @@ if (!window.structuredClone) {
 <script>
   // Protection against copy / inspect / save
   document.addEventListener('contextmenu', e => e.preventDefault());
-  document.addEventListener('keydown', e => {
-    // Block Ctrl+S, Ctrl+U, Ctrl+P, F12, Ctrl+Shift+I, Ctrl+C
-    if (
-      (e.ctrlKey && ['s','u','p','a','c'].includes(e.key.toLowerCase())) ||
-      e.key === 'F12' ||
-      (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(e.key.toLowerCase()))
-    ) {
-      e.preventDefault();
-      e.stopPropagation();
-      return false;
-    }
-  });
+  // Keyboard shortcuts protection disabled for compatibility
   // Disable drag
   document.addEventListener('dragstart', e => e.preventDefault());
-  // Detect devtools (basic)
-  setInterval(() => {
-    const threshold = 160;
-    if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
-      document.body.innerHTML = '<div style="color:#C8A84B;text-align:center;padding:40px;font-family:monospace;font-size:18px;">⚠️ Accès non autorisé</div>';
-    }
-  }, 1000);
+  // DevTools detection disabled for compatibility
 </script>
 <script type="text/babel">
 const { useState, useRef } = React;

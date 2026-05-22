@@ -111,11 +111,7 @@ if (!window.structuredClone) {
 <div id="root"></div>
 <script>
   document.addEventListener('contextmenu', e=>e.preventDefault());
-  document.addEventListener('keydown', e=>{
-    if((e.ctrlKey&&['s','u','p','a','c'].includes(e.key.toLowerCase()))||e.key==='F12'||(e.ctrlKey&&e.shiftKey&&['i','j','c'].includes(e.key.toLowerCase()))){
-      e.preventDefault(); return false;
-    }
-  });
+  // Key protection disabled
 </script>
 <script type="text/babel">
 const { useState } = React;
