@@ -2,21 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Radar QIVIVA">
-<meta name="format-detection" content="telephone=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Radar SENTINELLE — David Garcia</title>
-<script>
-// Safari/iOS polyfills
-if (!window.structuredClone) {
-  window.structuredClone = obj => JSON.parse(JSON.stringify(obj));
-}
-</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-<script>emailjs.init("YOUR_PUBLIC_KEY");</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <style>
@@ -67,16 +55,13 @@ if (!window.structuredClone) {
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: #0D1B2A; }
   ::-webkit-scrollbar-thumb { background: #C8A84B; border-radius: 2px; }
-
-  /* ── Apple / Safari / iOS fixes ── */
-  html { -webkit-text-size-adjust: 100%; height: -webkit-fill-available; }
-  body { min-height: -webkit-fill-available; -webkit-overflow-scrolling: touch; overscroll-behavior: none; }
-  button { -webkit-appearance: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-  input { -webkit-appearance: none; -webkit-user-select: text !important; font-size: 16px !important; border-radius: 0; }
-  a { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-  svg { -webkit-backface-visibility: hidden; display: block; }
-  * { -webkit-overflow-scrolling: touch; }
   /* Print protection */
+  
+  html { -webkit-text-size-adjust: 100%; height: -webkit-fill-available; }
+  body { min-height: -webkit-fill-available; -webkit-overflow-scrolling: touch; }
+  button { -webkit-appearance: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  input { font-size: 16px !important; -webkit-appearance: none; }
+  svg { -webkit-backface-visibility: hidden; display: block; }
   @media print {
     body { display: none !important; }
   }
@@ -84,14 +69,7 @@ if (!window.structuredClone) {
 </head>
 <body>
 <div id="root"></div>
-<script>
-  // Protection against copy / inspect / save
-  document.addEventListener('contextmenu', e => e.preventDefault());
-  // Keyboard shortcuts protection disabled for compatibility
-  // Disable drag
-  document.addEventListener('dragstart', e => e.preventDefault());
-  // DevTools detection disabled for compatibility
-</script>
+
 <script type="text/babel">
 const { useState, useRef } = React;
 
@@ -193,7 +171,7 @@ function RadarSVG({ scores }) {
   const grids = [2,4,6,8,10].map(lv => AXES.map((_,i)=>pt(i,lv)).map(p=>`${p.x},${p.y}`).join(' '));
   const score_pts = AXES.map((ax,i)=>pt(i,scores[ax.id]||0)).map(p=>`${p.x},${p.y}`).join(' ');
   return (
-    <svg width={S+60} height={S+60} viewBox={`-30 -30 ${S+60} ${S+60}`} style={{maxWidth:'100%',WebkitBackfaceVisibility:'hidden',display:'block'}}>
+    <svg width={S+60} height={S+60} viewBox={`-30 -30 ${S+60} ${S+60}`} style={{maxWidth:'100%'}}>
       {grids.map((g,i)=><polygon key={i} points={g} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>)}
       {AXES.map((_,i)=>{const e=pt(i,10);return<line key={i} x1={cx} y1={cy} x2={e.x} y2={e.y} stroke="rgba(255,255,255,0.1)" strokeWidth="1"/>})}
       <polygon points={score_pts} fill="rgba(200,168,75,0.15)" stroke="#C8A84B" strokeWidth="2" strokeLinejoin="round"/>
@@ -217,45 +195,6 @@ function App() {
   const [org, setOrg] = useState('');
   const [persp, setPersp] = useState('dirigeant');
   const [hover, setHover] = useState(null);
-  const [clientEmail, setClientEmail] = useState('');
-  const [clientName, setClientName] = useState('');
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [sendError, setSendError] = useState(false);
-
-  const sendReport = () => {
-    if (!clientEmail) return;
-    setSending(true);
-    setSendError(false);
-    const axesReport = AXES.map(a => `${a.label}: ${scores[a.id]||0}/10`).join('\n');
-    const ivsVal = getIVS(scores);
-    const statusVal = getStatus(ivsVal);
-    const templateParams = {
-      to_email: 'contact@qiviva.net',
-      client_email: clientEmail,
-      client_name: clientName || 'Non renseigné',
-      organisation: org || 'Non renseignée',
-      perspective: persp === 'dirigeant' ? 'Dirigeant / Manager' : 'Membre d\'équipe',
-      ivs_score: ivsVal + '/100',
-      ivs_status: statusVal.label,
-      axes_detail: axesReport,
-      axes_faibles: AXES.map(a=>({...a,s:scores[a.id]||0})).sort((a,b)=>a.s-b.s).slice(0,3).map(a=>`${a.label}: ${a.s}/10`).join('\n'),
-      reply_to: clientEmail
-    };
-    // Fallback: open mailto with report
-    const body = encodeURIComponent(
-      `RAPPORT RADAR SENTINELLE\n\n` +
-      `Client: ${clientName || 'Non renseigné'}\n` +
-      `Email: ${clientEmail}\n` +
-      `Organisation: ${org || 'Non renseignée'}\n` +
-      `Perspective: ${persp}\n\n` +
-      `IVS: ${ivsVal}/100 — ${statusVal.label}\n\n` +
-      `SCORES PAR PHASE:\n${axesReport}`
-    );
-    window.open(`mailto:contact@qiviva.net?subject=Radar SENTINELLE — Rapport ${org || clientName || 'Client'}&body=${body}`);
-    setSending(false);
-    setSent(true);
-  };
 
   const ivs = getIVS(scores);
   const status = getStatus(ivs);
@@ -328,7 +267,7 @@ function App() {
             <div style={{marginBottom:20,textAlign:'left'}}>
               {label('NOM DE L\'ORGANISATION (optionnel)')}
               <input value={org} onChange={e=>setOrg(e.target.value)} placeholder="Mon organisation..."
-                style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(200,168,75,0.3)',borderRadius:8,color:'#fff',fontSize:'16px',fontFamily:'Courier New,monospace',outline:'none',WebkitAppearance:'none'}}/>
+                style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(200,168,75,0.3)',borderRadius:8,color:'#fff',fontSize:13,fontFamily:'Courier New,monospace',outline:'none'}}/>
             </div>
             <div style={{marginBottom:24,textAlign:'left'}}>
               {label('VOUS RÉPONDEZ EN TANT QUE')}
@@ -340,7 +279,7 @@ function App() {
                 ))}
               </div>
             </div>
-            <button onClick={()=>setStep('questionnaire')} style={{width:'100%',padding:'15px',background:'-webkit-linear-gradient(135deg,#C8A84B,#A8882B)',border:'none',borderRadius:8,color:'#0D1B2A',fontSize:13,fontWeight:'bold',cursor:'pointer',letterSpacing:3,fontFamily:'Courier New,monospace'}}>
+            <button onClick={()=>setStep('questionnaire')} style={{width:'100%',padding:'15px',background:'linear-gradient(135deg,#C8A84B,#A8882B)',border:'none',borderRadius:8,color:'#0D1B2A',fontSize:13,fontWeight:'bold',cursor:'pointer',letterSpacing:3,fontFamily:'Courier New,monospace'}}>
               DÉMARRER L'AUDIT →
             </button>
             <div style={{marginTop:12,fontSize:9,color:'rgba(255,255,255,0.25)'}}>30 questions · 6 phases · ~15 minutes</div>
@@ -383,7 +322,7 @@ function App() {
               <div style={{display:'flex',gap:5}}>
                 {[1,2,3,4,5,6,7,8,9,10].map(n=>(
                   <button key={n} onMouseEnter={()=>setHover(n)} onMouseLeave={()=>setHover(null)} onClick={()=>handleScore(n)}
-                    style={{flex:1,minWidth:0,paddingTop:'calc(100% / 10)',position:'relative',paddingBottom:0,background:hover&&n<=hover?AXES[ax].color:'rgba(255,255,255,0.05)',border:`1px solid ${hover&&n<=hover?AXES[ax].color:'rgba(255,255,255,0.15)'}`,borderRadius:7,color:hover&&n<=hover?'#0D1B2A':'#fff',fontSize:12,fontWeight:'bold',cursor:'pointer',fontFamily:'Courier New,monospace',transition:'all 0.12s'}}>
+                    style={{flex:1,aspectRatio:'1',background:hover&&n<=hover?AXES[ax].color:'rgba(255,255,255,0.05)',border:`1px solid ${hover&&n<=hover?AXES[ax].color:'rgba(255,255,255,0.15)'}`,borderRadius:7,color:hover&&n<=hover?'#0D1B2A':'#fff',fontSize:12,fontWeight:'bold',cursor:'pointer',fontFamily:'Courier New,monospace',transition:'all 0.12s'}}>
                     {n}
                   </button>
                 ))}
@@ -466,66 +405,24 @@ function App() {
               </div>
             </div>
 
-            {/* SEND REPORT */}
-            <div style={{background:'rgba(26,107,154,0.12)',border:'1px solid rgba(26,107,154,0.4)',borderRadius:14,padding:28,marginBottom:20}}>
-              <div style={{fontSize:12,fontWeight:'bold',color:'#1A6B9A',marginBottom:4,letterSpacing:2}}>📩 RECEVOIR MON RAPPORT</div>
-              <p style={{fontSize:11,color:'rgba(255,255,255,0.5)',marginBottom:18,lineHeight:1.6}}>
-                Envoyez vos résultats à David Garcia pour un retour personnalisé.
+            {/* CTA */}
+            <div style={{background:'rgba(200,168,75,0.08)',border:'1px solid rgba(200,168,75,0.3)',borderRadius:14,padding:28,textAlign:'center',marginBottom:16}}>
+              <div style={{fontSize:14,fontWeight:'bold',color:'#C8A84B',marginBottom:6,letterSpacing:2}}>MÉTHODE SENTINELLE</div>
+              <p style={{fontSize:12,color:'rgba(255,255,255,0.55)',marginBottom:20,lineHeight:1.7}}>
+                Votre organisation vient d'être auditée.<br/>
+                Pour un accompagnement sur mesure — contactez David Garcia.
               </p>
-              {!sent ? (
-                <div>
-                  <div style={{display:'flex',gap:10,marginBottom:12,flexWrap:'wrap'}}>
-                    <input
-                      value={clientName}
-                      onChange={e=>setClientName(e.target.value)}
-                      placeholder="Votre prénom et nom..."
-                      style={{flex:1,minWidth:200,padding:'10px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(26,107,154,0.4)',borderRadius:7,color:'#fff',fontSize:12,fontFamily:'Courier New,monospace',outline:'none'}}
-                    />
-                    <input
-                      value={clientEmail}
-                      onChange={e=>setClientEmail(e.target.value)}
-                      placeholder="Votre email..."
-                      type="email"
-                      style={{flex:1,minWidth:200,padding:'10px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(26,107,154,0.4)',borderRadius:7,color:'#fff',fontSize:12,fontFamily:'Courier New,monospace',outline:'none'}}
-                    />
-                  </div>
-                  <button
-                    onClick={sendReport}
-                    disabled={!clientEmail || sending}
-                    style={{width:'100%',padding:'12px',background:clientEmail?'#1A6B9A':'rgba(255,255,255,0.08)',border:'none',borderRadius:7,color:clientEmail?'#fff':'rgba(255,255,255,0.3)',fontSize:12,fontWeight:'bold',cursor:clientEmail?'pointer':'not-allowed',fontFamily:'Courier New,monospace',letterSpacing:2,transition:'all 0.2s'}}
-                  >
-                    {sending ? 'ENVOI EN COURS...' : 'ENVOYER MON RAPPORT →'}
-                  </button>
-                </div>
-              ) : (
-                <div style={{textAlign:'center',padding:'16px 0'}}>
-                  <div style={{fontSize:28,marginBottom:8}}>✅</div>
-                  <div style={{fontSize:13,color:'#1ABC9C',fontWeight:'bold',letterSpacing:2}}>RAPPORT ENVOYÉ</div>
-                  <div style={{fontSize:11,color:'rgba(255,255,255,0.4)',marginTop:6}}>David Garcia vous contactera dans les 48h.</div>
-                </div>
-              )}
-            </div>
-
-            {/* CALENDLY */}
-            <div style={{background:'rgba(200,168,75,0.08)',border:'1px solid rgba(200,168,75,0.3)',borderRadius:14,padding:28,marginBottom:20}}>
-              <div style={{fontSize:12,fontWeight:'bold',color:'#C8A84B',marginBottom:4,letterSpacing:2}}>📅 RÉSERVER UN APPEL DE 30 MIN</div>
-              <p style={{fontSize:11,color:'rgba(255,255,255,0.5)',marginBottom:18,lineHeight:1.6}}>
-                Discutez de vos résultats avec David Garcia — gratuitement et sans engagement.
-              </p>
-              <a href="https://calendly.com/dvdk7381" target="_blank"
-                style={{display:'block',width:'100%',padding:'13px',background:'-webkit-linear-gradient(135deg,#C8A84B,#A8882B)',border:'none',borderRadius:7,color:'#0D1B2A',fontSize:12,fontWeight:'bold',textDecoration:'none',textAlign:'center',letterSpacing:2,boxSizing:'border-box'}}>
-                RÉSERVER MON CRÉNEAU →
-              </a>
-            </div>
-
-            {/* RESET + SITE */}
-            <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap'}}>
-              <a href="https://www.qiviva.net" target="_blank" style={{flex:1,padding:'11px',background:'transparent',border:'1px solid rgba(255,255,255,0.2)',borderRadius:7,color:'rgba(255,255,255,0.6)',fontSize:11,textDecoration:'none',textAlign:'center',letterSpacing:2}}>
-                QIVIVA.NET
-              </a>
-              <button onClick={reset} style={{flex:1,padding:'11px',background:'transparent',border:'1px solid rgba(255,255,255,0.15)',borderRadius:7,color:'rgba(255,255,255,0.35)',fontSize:11,cursor:'pointer',fontFamily:'Courier New,monospace',letterSpacing:2}}>
-                RECOMMENCER
-              </button>
+              <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
+                <a href="mailto:contact@qiviva.net" style={{padding:'11px 22px',background:'#C8A84B',borderRadius:7,color:'#0D1B2A',fontSize:11,fontWeight:'bold',textDecoration:'none',letterSpacing:2}}>
+                  CONTACT →
+                </a>
+                <a href="https://www.qiviva.net" target="_blank" style={{padding:'11px 22px',background:'transparent',border:'1px solid rgba(255,255,255,0.25)',borderRadius:7,color:'#fff',fontSize:11,textDecoration:'none',letterSpacing:2}}>
+                  QIVIVA.NET
+                </a>
+                <button onClick={reset} style={{padding:'11px 22px',background:'transparent',border:'1px solid rgba(255,255,255,0.15)',borderRadius:7,color:'rgba(255,255,255,0.5)',fontSize:11,cursor:'pointer',fontFamily:'Courier New,monospace',letterSpacing:2}}>
+                  RECOMMENCER
+                </button>
+              </div>
             </div>
 
             <div style={{textAlign:'center',fontSize:9,color:'rgba(255,255,255,0.2)',letterSpacing:2}}>
