@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Radar QIVIVA">
+<meta name="format-detection" content="telephone=no">
+<title>Radar QIVIVA — Bilan de Vitalité Personnelle</title>
+<script>
+// Safari/iOS polyfills
+if (!window.structuredClone) {
+  window.structuredClone = obj => JSON.parse(JSON.stringify(obj));
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: linear-gradient(135deg, #0A1628 0%, #112240 50%, #0A1628 100%);
+    min-height:100vh; font-family:'Georgia',serif; color:#fff;
+    -webkit-user-select:none; user-select:none;
+  }
+  body::after {
+    content:"© DAVID GARCIA — QIVIVA.NET — CONFIDENTIEL";
+    position:fixed; bottom:8px; right:12px; font-size:8px;
+    color:rgba(100,200,150,0.2); letter-spacing:2px; pointer-events:none; z-index:9999;
+  }
+  body::before {
+    content:"© QIVIVA · DAVID GARCIA · CONFIDENTIEL";
+    position:fixed; top:50%; left:50%;
+    transform:translate(-50%,-50%) rotate(-35deg);
+    font-size:20px; color:rgba(100,200,150,0.03);
+    pointer-events:none; z-index:9998; white-space:nowrap; font-weight:bold;
+  }
+  input, textarea { -webkit-user-select:text; user-select:text; }
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-track { background:#0A1628; }
+  ::-webkit-scrollbar-thumb { background:#64C896; border-radius:2px; }
+  @media print { body { display:none !important; } }
+  /* Apple / Safari specific fixes */
+  html {
+    -webkit-text-size-adjust: 100%;
+    height: -webkit-fill-available;
+  }
+  body {
+    min-height: -webkit-fill-available;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+  button {
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  input {
+    -webkit-appearance: none;
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    border-radius: 0;
+  }
+  a {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  /* Safe area for iPhone notch */
+  .header-safe {
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
+  }
+  .bottom-safe {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+  /* Fix for Safari flexbox */
+  .flex-wrap-safari {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-wrap: wrap;
+    flex-wrap: wrap;
+  }
+  /* Fix aspect-ratio for Safari < 15 */
+  .score-btn {
+    width: 100%;
+    padding-bottom: 100%;
+    position: relative;
+  }
+  .score-btn-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Smooth scrolling */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Fix for Safari SVG rendering */
+  svg {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  document.addEventListener('contextmenu', e=>e.preventDefault());
+  document.addEventListener('keydown', e=>{
+    if((e.ctrlKey&&['s','u','p','a','c'].includes(e.key.toLowerCase()))||e.key==='F12'||(e.ctrlKey&&e.shiftKey&&['i','j','c'].includes(e.key.toLowerCase()))){
+      e.preventDefault(); return false;
+    }
+  });
+</script>
+<script type="text/babel">
+const { useState } = React;
+
+// ─── SCIENTIFIC FOUNDATIONS ───────────────────────────────
+const AXES = [
+  {
+    id: "corps",
+    label: "CORPS & ÉNERGIE",
+    emoji: "💚",
+    color: "#2ECC71",
+    ref: "Modèle Bio-Psycho-Social (Engel, 1977)",
+    description: "Votre capital physique — énergie, sommeil, alimentation, mouvement",
+    questions: [
+      { q: "Votre niveau d'énergie au réveil est-il suffisant pour affronter la journée ?", inv: false },
+      { q: "Votre sommeil est-il réparateur et suffisant (7-8h) ?", inv: false },
+      { q: "Vous nourrissez-vous de façon équilibrée au quotidien ?", inv: false },
+      { q: "Pratiquez-vous une activité physique régulière (≥ 2x/semaine) ?", inv: false },
+      { q: "Ressentez-vous des douleurs ou tensions physiques chroniques ?", inv: true }
+    ]
+  },
+  {
+    id: "stress",
+    label: "STRESS & RÉGULATION",
+    emoji: "🌊",
+    color: "#3498DB",
+    ref: "Perceived Stress Scale (Cohen, 1983) · HeartMath Institute",
+    description: "Votre capacité à réguler le stress et revenir à l'équilibre",
+    questions: [
+      { q: "Vous sentez-vous capable de gérer les imprévus sans vous effondrer ?", inv: false },
+      { q: "Avez-vous des techniques pour vous calmer rapidement (respiration, etc.) ?", inv: false },
+      { q: "Votre niveau de stress interfère-t-il avec votre vie quotidienne ?", inv: true },
+      { q: "Revenez-vous facilement à un état calme après une situation stressante ?", inv: false },
+      { q: "Ressentez-vous une tension ou anxiété de fond permanente ?", inv: true }
+    ]
+  },
+  {
+    id: "emotions",
+    label: "ÉMOTIONS & BIEN-ÊTRE",
+    emoji: "✨",
+    color: "#F39C12",
+    ref: "Modèle PERMA (Seligman, 2011) · Psychologie Positive",
+    description: "Votre vie émotionnelle — joie, sérénité, épanouissement",
+    questions: [
+      { q: "Éprouvez-vous régulièrement des émotions positives (joie, gratitude, sérénité) ?", inv: false },
+      { q: "Êtes-vous capable d'identifier et nommer vos émotions ?", inv: false },
+      { q: "Vos émotions négatives vous submergent-elles fréquemment ?", inv: true },
+      { q: "Trouvez-vous du plaisir dans vos activités quotidiennes ?", inv: false },
+      { q: "Savez-vous accueillir la tristesse ou la colère sans vous juger ?", inv: false }
+    ]
+  },
+  {
+    id: "relations",
+    label: "RELATIONS & LIENS",
+    emoji: "🤝",
+    color: "#9B59B6",
+    ref: "Théorie de l'Auto-détermination (Deci & Ryan, 2000)",
+    description: "La qualité de vos liens — soutien, appartenance, connexion",
+    questions: [
+      { q: "Avez-vous des personnes de confiance sur qui vous pouvez vraiment compter ?", inv: false },
+      { q: "Vous sentez-vous connecté(e) et compris(e) dans vos relations proches ?", inv: false },
+      { q: "Vous sentez-vous souvent seul(e) ou incompris(e) ?", inv: true },
+      { q: "Vos relations vous apportent-elles soutien et énergie positive ?", inv: false },
+      { q: "Savez-vous fixer des limites saines dans vos relations ?", inv: false }
+    ]
+  },
+  {
+    id: "sens",
+    label: "SENS & MISSION",
+    emoji: "🌟",
+    color: "#E74C3C",
+    ref: "Logothérapie (Frankl, 1946) · PERMA-M (Meaning)",
+    description: "Votre sentiment d'avoir un but — direction, valeurs, contribution",
+    questions: [
+      { q: "Votre vie a-t-elle un sens clair pour vous en ce moment ?", inv: false },
+      { q: "Vos actions quotidiennes sont-elles alignées avec vos valeurs profondes ?", inv: false },
+      { q: "Ressentez-vous un sentiment de vide ou d'absurdité face à votre vie ?", inv: true },
+      { q: "Avez-vous des projets qui vous tiennent à cœur et vous mobilisent ?", inv: false },
+      { q: "Sentez-vous que vous contribuez positivement à quelque chose de plus grand que vous ?", inv: false }
+    ]
+  },
+  {
+    id: "resilience",
+    label: "RÉSILIENCE",
+    emoji: "🔥",
+    color: "#E67E22",
+    ref: "Résilience (Cyrulnik, 2001) · Connor-Davidson Scale",
+    description: "Votre capacité à rebondir face aux épreuves et à en sortir grandi(e)",
+    questions: [
+      { q: "Face aux difficultés, trouvez-vous généralement des ressources pour rebondir ?", inv: false },
+      { q: "Les épreuves passées vous ont-elles rendu(e) plus fort(e) ?", inv: false },
+      { q: "Les échecs ou crises vous laissent-ils(elles) durablement abattu(e) ?", inv: true },
+      { q: "Gardez-vous espoir même dans les situations difficiles ?", inv: false },
+      { q: "Savez-vous demander de l'aide quand vous en avez besoin ?", inv: false }
+    ]
+  },
+  {
+    id: "autonomie",
+    label: "POUVOIR D'AGIR",
+    emoji: "⚡",
+    color: "#1ABC9C",
+    ref: "Auto-efficacité (Bandura, 1997) · Locus de contrôle (Rotter)",
+    description: "Votre sentiment de maîtrise — capacité à agir sur votre vie",
+    questions: [
+      { q: "Vous sentez-vous acteur(trice) de votre vie plutôt que subir les événements ?", inv: false },
+      { q: "Faites-vous confiance à votre capacité à relever de nouveaux défis ?", inv: false },
+      { q: "Vous sentez-vous souvent impuissant(e) face aux situations ?", inv: true },
+      { q: "Prenez-vous des décisions en accord avec vos besoins profonds ?", inv: false },
+      { q: "Êtes-vous capable de sortir de votre zone de confort pour évoluer ?", inv: false }
+    ]
+  },
+  {
+    id: "vitalite",
+    label: "VITALITÉ GLOBALE",
+    emoji: "🌿",
+    color: "#27AE60",
+    ref: "Définition OMS de la santé (1948) · Subjective Vitality Scale (Ryan & Frederick)",
+    description: "Votre sentiment global d'être vivant(e), plein(e) d'élan et de vitalité",
+    questions: [
+      { q: "Vous sentez-vous globalement bien dans votre peau en ce moment ?", inv: false },
+      { q: "Avez-vous l'énergie et l'enthousiasme pour ce qui compte pour vous ?", inv: false },
+      { q: "Avez-vous l'impression de « survivre » plutôt que de vraiment vivre ?", inv: true },
+      { q: "Votre vie actuelle correspond-elle à ce que vous souhaitez profondément ?", inv: false },
+      { q: "Ressentez-vous un élan de vie, une envie de vous lever le matin ?", inv: false }
+    ]
+  }
+];
+
+function calcScore(axis, answers) {
+  const qs = axis.questions;
+  if (!qs.every((_, i) => answers[i] !== undefined)) return null;
+  let total = 0;
+  qs.forEach((q, i) => {
+    const raw = answers[i];
+    total += q.inv ? (10 - raw + 1) : raw;
+  });
+  return Math.round((total / (qs.length * 10)) * 10 * 10) / 10;
+}
+
+function getGlobalScore(scores) {
+  const vals = Object.values(scores).filter(v => v !== null);
+  if (!vals.length) return 0;
+  return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10;
+}
+
+function getVitalityLevel(score) {
+  if (score >= 8) return { label: "VITALITÉ ÉLEVÉE", sub: "Vous rayonnez. Continuez à cultiver.", color: "#27AE60", emoji: "🌟" };
+  if (score >= 6) return { label: "BONNE VITALITÉ", sub: "Des bases solides avec des axes à renforcer.", color: "#F39C12", emoji: "✨" };
+  if (score >= 4) return { label: "VITALITÉ FRAGILE", sub: "Des signaux à écouter. Un accompagnement peut aider.", color: "#E67E22", emoji: "⚠️" };
+  return { label: "VITALITÉ EN SOUFFRANCE", sub: "Votre corps et votre psyché ont besoin de soutien.", color: "#E74C3C", emoji: "🆘" };
+}
+
+function RadarSVG({ scores }) {
+  const S = 300, cx = 150, cy = 150, r = 115, n = AXES.length;
+  const ang = i => Math.PI*2*i/n - Math.PI/2;
+  const pt = (i,v) => ({ x: cx+(v/10)*r*Math.cos(ang(i)), y: cy+(v/10)*r*Math.sin(ang(i)) });
+  const lp = i => ({ x: cx+(r+32)*Math.cos(ang(i)), y: cy+(r+32)*Math.sin(ang(i)) });
+  const grids = [2,4,6,8,10].map(lv => AXES.map((_,i)=>pt(i,lv)).map(p=>`${p.x},${p.y}`).join(' '));
+  const score_pts = AXES.map((ax,i)=>pt(i,scores[ax.id]||0)).map(p=>`${p.x},${p.y}`).join(' ');
+  return (
+    <svg width={S+80} height={S+80} viewBox={`-40 -40 ${S+80} ${S+80}`} style={{maxWidth:'100%',WebkitBackfaceVisibility:'hidden',display:'block'}}>
+      {grids.map((g,gi)=>(
+        <polygon key={gi} points={g} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
+      ))}
+      {AXES.map((_,i)=>{
+        const e=pt(i,10);
+        return <line key={i} x1={cx} y1={cy} x2={e.x} y2={e.y} stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>;
+      })}
+      <polygon points={score_pts} fill="rgba(100,200,150,0.15)" stroke="#64C896" strokeWidth="2.5" strokeLinejoin="round"/>
+      {AXES.map((ax,i)=>{
+        const p=pt(i,scores[ax.id]||0);
+        return <circle key={i} cx={p.x} cy={p.y} r="5" fill={ax.color} stroke="#0A1628" strokeWidth="2"/>;
+      })}
+      {AXES.map((ax,i)=>{
+        const l=lp(i);
+        return (
+          <g key={i}>
+            <text x={l.x} y={l.y-6} textAnchor="middle" fill={ax.color} fontSize="8" fontWeight="bold" fontFamily="Georgia,serif">{ax.emoji}</text>
+            <text x={l.x} y={l.y+6} textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="7" fontFamily="monospace">{scores[ax.id]||0}/10</text>
+          </g>
+        );
+      })}
+      <circle cx={cx} cy={cy} r="3" fill="rgba(255,255,255,0.2)"/>
+    </svg>
+  );
+}
+
+function App() {
+  const [step, setStep] = useState('intro');
+  const [axIdx, setAxIdx] = useState(0);
+  const [qIdx, setQIdx] = useState(0);
+  const [allAnswers, setAllAnswers] = useState({});
+  const [scores, setScores] = useState({});
+  const [firstName, setFirstName] = useState('');
+  const [email, setEmail] = useState('');
+  const [hover, setHover] = useState(null);
+  const [sent, setSent] = useState(false);
+
+  const prog = ((axIdx * 5 + qIdx) / (AXES.length * 5)) * 100;
+  const globalScore = getGlobalScore(scores);
+  const level = getVitalityLevel(globalScore);
+
+  const handleAnswer = val => {
+    const axId = AXES[axIdx].id;
+    const newAnswers = {
+      ...allAnswers,
+      [axId]: { ...(allAnswers[axId]||{}), [qIdx]: val }
+    };
+    setAllAnswers(newAnswers);
+
+    if (qIdx < 4) {
+      setQIdx(q => q+1);
+    } else {
+      const sc = calcScore(AXES[axIdx], newAnswers[axId]);
+      const newScores = { ...scores, [axId]: sc };
+      setScores(newScores);
+      if (axIdx < AXES.length-1) {
+        setAxIdx(a => a+1);
+        setQIdx(0);
+      } else {
+        setStep('results');
+      }
+    }
+  };
+
+  const sendReport = () => {
+    const axesReport = AXES.map(a=>`${a.emoji} ${a.label}: ${scores[a.id]||0}/10`).join('\n');
+    const body = encodeURIComponent(
+      `RAPPORT RADAR VITALITÉ QIVIVA\n\n` +
+      `Prénom: ${firstName}\nEmail: ${email}\n\n` +
+      `Score Global de Vitalité: ${globalScore}/10\n` +
+      `Niveau: ${level.label}\n\n` +
+      `SCORES PAR AXE:\n${axesReport}\n\n` +
+      `Axes prioritaires:\n${AXES.map(a=>({...a,s:scores[a.id]||0})).sort((a,b)=>a.s-b.s).slice(0,3).map(a=>`• ${a.label}: ${a.s}/10`).join('\n')}`
+    );
+    window.open(`mailto:contact@qiviva.net?subject=Radar Vitalité QIVIVA — ${firstName}&body=${body}`);
+    setSent(true);
+  };
+
+  const reset = () => {
+    setStep('intro'); setAxIdx(0); setQIdx(0);
+    setAllAnswers({}); setScores({});
+    setFirstName(''); setEmail(''); setSent(false);
+  };
+
+  const card = (children, style={}) => (
+    <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(100,200,150,0.2)',borderRadius:14,padding:24,...style}}>
+      {children}
+    </div>
+  );
+
+  const sectionLabel = (txt, color='rgba(255,255,255,0.3)') => (
+    <div style={{fontSize:9,letterSpacing:3,color,marginBottom:10,fontFamily:'monospace'}}>{txt}</div>
+  );
+
+  const ax = AXES[axIdx];
+
+  return (
+    <div style={{minHeight:'100vh'}}>
+
+      {/* Header */}
+      <div style={{borderBottom:'1px solid rgba(100,200,150,0.2)',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',background:'rgba(10,22,40,0.9)',position:'sticky',top:0,zIndex:100,backdropFilter:'blur(10px)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <div style={{width:36,height:36,borderRadius:'50%',border:'2px solid #64C896',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>🌿</div>
+          <div>
+            <div style={{fontSize:12,fontWeight:'bold',color:'#64C896',letterSpacing:3,fontFamily:'monospace'}}>RADAR VITALITÉ</div>
+            <div style={{fontSize:8,color:'rgba(255,255,255,0.3)',letterSpacing:2,fontFamily:'monospace'}}>BILAN PERSONNEL QIVIVA</div>
+          </div>
+        </div>
+        <div style={{fontSize:8,color:'rgba(255,255,255,0.2)',letterSpacing:1,fontFamily:'monospace'}}>© DAVID GARCIA · QIVIVA.NET</div>
+      </div>
+
+      <div style={{maxWidth:820,margin:'0 auto',padding:'28px 20px'}}>
+
+        {/* ─── INTRO ─── */}
+        {step==='intro' && (
+          <div style={{maxWidth:560,margin:'0 auto',textAlign:'center'}}>
+            <div style={{fontSize:14,color:'rgba(100,200,150,0.6)',letterSpacing:4,marginBottom:8,fontFamily:'monospace'}}>BILAN DE</div>
+            <div style={{fontSize:42,fontWeight:'bold',color:'#64C896',letterSpacing:3,marginBottom:4,fontFamily:'Georgia,serif'}}>VITALITÉ</div>
+            <div style={{fontSize:18,letterSpacing:6,color:'rgba(255,255,255,0.4)',marginBottom:28,fontFamily:'monospace'}}>PERSONNELLE</div>
+
+            {card(<>
+              {sectionLabel('FONDÉ SUR LA RECHERCHE SCIENTIFIQUE')}
+              <p style={{fontSize:12,color:'rgba(255,255,255,0.6)',lineHeight:1.9,marginBottom:16}}>
+                Cet outil évalue <strong style={{color:'#fff'}}>8 dimensions fondamentales</strong> de votre vitalité,
+                issues des modèles validés en psychologie positive, neurosciences et médecine intégrative.
+              </p>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                {AXES.map(a=>(
+                  <div key={a.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',background:`${a.color}10`,borderRadius:8,border:`1px solid ${a.color}30`}}>
+                    <span style={{fontSize:16}}>{a.emoji}</span>
+                    <span style={{fontSize:10,color:a.color,fontWeight:'bold',letterSpacing:1,fontFamily:'monospace'}}>{a.label}</span>
+                  </div>
+                ))}
+              </div>
+            </>,{marginBottom:20})}
+
+            {card(<>
+              {sectionLabel('RÉFÉRENCES SCIENTIFIQUES')}
+              {AXES.slice(0,4).map(a=>(
+                <div key={a.id} style={{fontSize:9,color:'rgba(255,255,255,0.35)',marginBottom:4,fontFamily:'monospace'}}>
+                  <span style={{color:a.color}}>{a.emoji} {a.label}</span> — {a.ref}
+                </div>
+              ))}
+              <div style={{fontSize:9,color:'rgba(255,255,255,0.2)',marginTop:4,fontStyle:'italic'}}>+ 4 autres références scientifiques validées...</div>
+            </>,{marginBottom:24})}
+
+            <div style={{marginBottom:16,textAlign:'left'}}>
+              {sectionLabel('VOTRE PRÉNOM')}
+              <input value={firstName} onChange={e=>setFirstName(e.target.value)} placeholder="Votre prénom..."
+                style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(100,200,150,0.3)',borderRadius:8,color:'#fff',fontSize:'16px',fontFamily:'Georgia,serif',outline:'none',WebkitAppearance:'none',marginBottom:12}}/>
+              {sectionLabel('VOTRE EMAIL (pour recevoir vos résultats)')}
+              <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="votre@email.com" type="email"
+                style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(100,200,150,0.3)',borderRadius:8,color:'#fff',fontSize:'16px',fontFamily:'Georgia,serif',outline:'none',WebkitAppearance:'none'}}/>
+            </div>
+
+            <button onClick={()=>setStep('questionnaire')} style={{width:'100%',padding:'15px',background:'-webkit-linear-gradient(135deg,#27AE60,#1ABC9C)',border:'none',borderRadius:8,color:'#fff',fontSize:13,fontWeight:'bold',cursor:'pointer',letterSpacing:3,fontFamily:'monospace',marginBottom:12}}>
+              COMMENCER MON BILAN →
+            </button>
+            <div style={{fontSize:9,color:'rgba(255,255,255,0.2)',fontFamily:'monospace'}}>40 questions · 8 dimensions · ~10 minutes · Strictement confidentiel</div>
+          </div>
+        )}
+
+        {/* ─── QUESTIONNAIRE ─── */}
+        {step==='questionnaire' && (
+          <div style={{maxWidth:640,margin:'0 auto'}}>
+
+            {/* Progress */}
+            <div style={{marginBottom:24}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                <span style={{fontSize:9,color:'rgba(255,255,255,0.3)',letterSpacing:2,fontFamily:'monospace'}}>DIMENSION {axIdx+1}/8 · Q{qIdx+1}/5</span>
+                <span style={{fontSize:9,color:'#64C896',letterSpacing:2,fontFamily:'monospace'}}>{Math.round(prog)}%</span>
+              </div>
+              <div style={{height:3,background:'rgba(255,255,255,0.08)',borderRadius:2}}>
+                <div style={{height:'100%',borderRadius:2,background:'linear-gradient(90deg,#27AE60,#64C896)',width:`${prog}%`,transition:'width 0.4s'}}/>
+              </div>
+            </div>
+
+            {/* Axis tabs */}
+            <div style={{display:'flex',gap:5,marginBottom:24,overflowX:'auto',paddingBottom:4}}>
+              {AXES.map((a,i)=>(
+                <div key={i} style={{flex:'0 0 auto',width:32,height:32,borderRadius:'50%',background:i<axIdx?a.color:i===axIdx?`${a.color}80`:'rgba(255,255,255,0.08)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,transition:'all 0.3s',border:i===axIdx?`2px solid ${a.color}`:'none'}}>
+                  {i<axIdx?'✓':a.emoji}
+                </div>
+              ))}
+            </div>
+
+            {/* Current axis */}
+            <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:20}}>
+              <div style={{width:54,height:54,borderRadius:'50%',background:`linear-gradient(135deg,${ax.color}80,${ax.color}40)`,border:`2px solid ${ax.color}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,flexShrink:0}}>
+                {ax.emoji}
+              </div>
+              <div>
+                <div style={{fontSize:15,fontWeight:'bold',color:ax.color,letterSpacing:1,fontFamily:'monospace'}}>{ax.label}</div>
+                <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',fontStyle:'italic'}}>{ax.description}</div>
+                <div style={{fontSize:8,color:'rgba(255,255,255,0.2)',marginTop:2,fontFamily:'monospace'}}>{ax.ref}</div>
+              </div>
+            </div>
+
+            {/* Question */}
+            <div style={{background:`${ax.color}0A`,border:`1px solid ${ax.color}30`,borderLeft:`3px solid ${ax.color}`,borderRadius:'0 12px 12px 0',padding:24,marginBottom:24}}>
+              {sectionLabel(`QUESTION ${qIdx+1} SUR 5`)}
+              <p style={{fontSize:15,color:'#fff',lineHeight:1.8,margin:0,fontFamily:'Georgia,serif'}}>
+                {ax.questions[qIdx].q}
+              </p>
+              {ax.questions[qIdx].inv && (
+                <div style={{marginTop:10,fontSize:9,color:'rgba(255,255,255,0.3)',fontStyle:'italic',fontFamily:'monospace'}}>
+                  * Question à score inversé — répondez spontanément
+                </div>
+              )}
+            </div>
+
+            {/* Score */}
+            <div>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+                <span style={{fontSize:10,color:'rgba(255,255,255,0.4)',fontFamily:'Georgia,serif',fontStyle:'italic'}}>Pas du tout</span>
+                <span style={{fontSize:10,color:'rgba(255,255,255,0.4)',fontFamily:'Georgia,serif',fontStyle:'italic'}}>Totalement</span>
+              </div>
+              <div style={{display:'flex',gap:5}}>
+                {[1,2,3,4,5,6,7,8,9,10].map(n=>(
+                  <button key={n}
+                    onMouseEnter={()=>setHover(n)}
+                    onMouseLeave={()=>setHover(null)}
+                    onClick={()=>handleAnswer(n)}
+                    style={{flex:1,minWidth:0,paddingTop:'calc(100% / 10)',position:'relative',paddingBottom:0,background:hover&&n<=hover?ax.color:'rgba(255,255,255,0.05)',border:`1px solid ${hover&&n<=hover?ax.color:'rgba(255,255,255,0.12)'}`,borderRadius:8,color:hover&&n<=hover?'#fff':'rgba(255,255,255,0.6)',fontSize:12,fontWeight:'bold',cursor:'pointer',fontFamily:'monospace',WebkitTapHighlightColor:'transparent',touchAction:'manipulation',transition:'all 0.12s'}}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Reassurance */}
+            <div style={{marginTop:20,textAlign:'center',fontSize:10,color:'rgba(255,255,255,0.2)',fontStyle:'italic',fontFamily:'Georgia,serif'}}>
+              Répondez spontanément · Il n'y a pas de bonne ou mauvaise réponse
+            </div>
+          </div>
+        )}
+
+        {/* ─── RESULTS ─── */}
+        {step==='results' && (
+          <div>
+
+            {/* Global score */}
+            <div style={{textAlign:'center',marginBottom:36}}>
+              {sectionLabel('VOTRE SCORE GLOBAL DE VITALITÉ',`rgba(255,255,255,0.3)`)}
+              {firstName && <div style={{fontSize:14,color:'rgba(255,255,255,0.5)',marginBottom:12,fontFamily:'Georgia,serif',fontStyle:'italic'}}>Bonjour {firstName} 👋</div>}
+              <div style={{width:160,height:160,borderRadius:'50%',border:`5px solid ${level.color}`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:`${level.color}12`,margin:'0 auto',boxShadow:`0 0 40px ${level.color}25`}}>
+                <div style={{fontSize:20,marginBottom:4}}>{level.emoji}</div>
+                <div style={{fontSize:40,fontWeight:'bold',color:level.color,lineHeight:1,fontFamily:'Georgia,serif'}}>{globalScore}</div>
+                <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',fontFamily:'monospace'}}>/10</div>
+              </div>
+              <div style={{marginTop:14}}>
+                <div style={{display:'inline-block',padding:'8px 22px',background:`${level.color}18`,border:`1px solid ${level.color}`,borderRadius:20,fontSize:11,fontWeight:'bold',color:level.color,letterSpacing:2,fontFamily:'monospace'}}>
+                  {level.label}
+                </div>
+              </div>
+              <div style={{marginTop:10,fontSize:12,color:'rgba(255,255,255,0.4)',fontStyle:'italic',fontFamily:'Georgia,serif'}}>{level.sub}</div>
+            </div>
+
+            {/* Radar + Bars */}
+            <div style={{display:'flex',gap:24,marginBottom:36,flexWrap:'wrap',alignItems:'flex-start'}}>
+              <div style={{flex:'0 0 auto',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(100,200,150,0.15)',borderRadius:14,padding:20,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <RadarSVG scores={scores}/>
+              </div>
+              <div style={{flex:1,minWidth:240}}>
+                {sectionLabel('VOS 8 DIMENSIONS')}
+                {AXES.map(a=>{
+                  const s=scores[a.id]||0;
+                  const ic=s>=7?'✅':s>=5?'⚠️':'🔴';
+                  return(
+                    <div key={a.id} style={{marginBottom:13}}>
+                      <div style={{display:'flex',justifyContent:'space-between',marginBottom:5,alignItems:'center'}}>
+                        <span style={{fontSize:10,color:a.color,fontWeight:'bold',fontFamily:'monospace'}}>{a.emoji} {a.label}</span>
+                        <span style={{fontSize:12,fontWeight:'bold',color:a.color}}>{s}/10 {ic}</span>
+                      </div>
+                      <div style={{height:5,background:'rgba(255,255,255,0.07)',borderRadius:3}}>
+                        <div style={{height:'100%',borderRadius:3,background:`linear-gradient(90deg,${a.color}80,${a.color})`,width:`${(s/10)*100}%`,transition:'width 1.2s ease'}}/>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Axes forts */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:28}}>
+              <div>
+                {sectionLabel('💪 VOS POINTS FORTS')}
+                {AXES.map(a=>({...a,s:scores[a.id]||0})).sort((a,b)=>b.s-a.s).slice(0,3).map((a,i)=>(
+                  <div key={a.id} style={{background:`${a.color}10`,border:`1px solid ${a.color}30`,borderRadius:8,padding:'10px 14px',marginBottom:8,display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontSize:18}}>{a.emoji}</span>
+                    <div>
+                      <div style={{fontSize:10,fontWeight:'bold',color:a.color,fontFamily:'monospace'}}>{a.label}</div>
+                      <div style={{fontSize:9,color:'rgba(255,255,255,0.4)'}}>Score : {a.s}/10</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div>
+                {sectionLabel('🎯 AXES PRIORITAIRES')}
+                {AXES.map(a=>({...a,s:scores[a.id]||0})).sort((a,b)=>a.s-b.s).slice(0,3).map((a,i)=>(
+                  <div key={a.id} style={{background:'rgba(255,255,255,0.03)',border:`1px solid ${a.color}30`,borderLeft:`3px solid ${a.color}`,borderRadius:'0 8px 8px 0',padding:'10px 14px',marginBottom:8}}>
+                    <div style={{fontSize:10,fontWeight:'bold',color:a.color,fontFamily:'monospace',marginBottom:3}}>{a.emoji} {a.label} — {a.s}/10</div>
+                    <div style={{fontSize:9,color:'rgba(255,255,255,0.4)',lineHeight:1.5,fontStyle:'italic',fontFamily:'Georgia,serif'}}>
+                      {a.s<4?`Axe en souffrance — un accompagnement ciblé est recommandé.`:a.s<6?`Axe fragilisé — des ressources existent pour vous soutenir.`:`Axe à consolider — quelques ajustements peuvent faire la différence.`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Scientific note */}
+            {card(<>
+              {sectionLabel('NOTE MÉTHODOLOGIQUE')}
+              <p style={{fontSize:11,color:'rgba(255,255,255,0.45)',lineHeight:1.8,fontStyle:'italic',fontFamily:'Georgia,serif',margin:0}}>
+                Ce bilan est basé sur des modèles validés scientifiquement — PERMA (Seligman), 
+                PSS (Cohen), Auto-détermination (Deci & Ryan), Auto-efficacité (Bandura), 
+                Résilience (Cyrulnik), Logothérapie (Frankl) et la définition OMS de la santé. 
+                Il constitue un outil d'exploration personnelle — non un diagnostic médical ou psychologique.
+              </p>
+            </>,{marginBottom:20})}
+
+            {/* Send report */}
+            <div style={{background:'rgba(26,107,154,0.12)',border:'1px solid rgba(26,107,154,0.35)',borderRadius:14,padding:24,marginBottom:16}}>
+              {sectionLabel('📩 RECEVOIR UN RETOUR PERSONNALISÉ','rgba(100,200,150,0.6)')}
+              <p style={{fontSize:11,color:'rgba(255,255,255,0.45)',marginBottom:16,lineHeight:1.6,fontFamily:'Georgia,serif',fontStyle:'italic'}}>
+                David Garcia analyse vos résultats et vous propose un accompagnement adapté à votre profil de vitalité.
+              </p>
+              {!sent ? (
+                <button onClick={sendReport} style={{width:'100%',padding:'13px',background:'-webkit-linear-gradient(135deg,#27AE60,#1ABC9C)',border:'none',borderRadius:8,color:'#fff',fontSize:12,fontWeight:'bold',cursor:'pointer',fontFamily:'monospace',WebkitTapHighlightColor:'transparent',touchAction:'manipulation',letterSpacing:2}}>
+                  ENVOYER MES RÉSULTATS →
+                </button>
+              ) : (
+                <div style={{textAlign:'center',padding:'12px 0'}}>
+                  <div style={{fontSize:24,marginBottom:6}}>✅</div>
+                  <div style={{fontSize:12,color:'#64C896',fontWeight:'bold',letterSpacing:2,fontFamily:'monospace'}}>RAPPORT ENVOYÉ</div>
+                  <div style={{fontSize:10,color:'rgba(255,255,255,0.35)',marginTop:4,fontFamily:'Georgia,serif',fontStyle:'italic'}}>David Garcia vous contactera dans les 48h.</div>
+                </div>
+              )}
+            </div>
+
+            {/* Calendly */}
+            <div style={{background:'rgba(100,200,150,0.07)',border:'1px solid rgba(100,200,150,0.25)',borderRadius:14,padding:24,marginBottom:16}}>
+              {sectionLabel('📅 RÉSERVER UN ENTRETIEN DÉCOUVERTE','rgba(100,200,150,0.6)')}
+              <p style={{fontSize:11,color:'rgba(255,255,255,0.45)',marginBottom:16,lineHeight:1.6,fontFamily:'Georgia,serif',fontStyle:'italic'}}>
+                30 minutes pour échanger sur vos résultats et explorer l'accompagnement qui vous correspond.
+              </p>
+              <a href="https://calendly.com/dvdk7381" target="_blank"
+                style={{display:'block',padding:'13px',background:'-webkit-linear-gradient(135deg,#1ABC9C,#27AE60)',border:'none',borderRadius:8,color:'#fff',fontSize:12,fontWeight:'bold',textDecoration:'none',textAlign:'center',letterSpacing:2,fontFamily:'monospace'}}>
+                RÉSERVER MON ENTRETIEN →
+              </a>
+            </div>
+
+            {/* Footer */}
+            <div style={{display:'flex',gap:10,marginBottom:20}}>
+              <a href="https://www.qiviva.net" target="_blank" style={{flex:1,padding:'11px',background:'transparent',border:'1px solid rgba(255,255,255,0.15)',borderRadius:7,color:'rgba(255,255,255,0.4)',fontSize:10,textDecoration:'none',textAlign:'center',letterSpacing:2,fontFamily:'monospace'}}>
+                QIVIVA.NET
+              </a>
+              <button onClick={reset} style={{flex:1,padding:'11px',background:'transparent',border:'1px solid rgba(255,255,255,0.1)',borderRadius:7,color:'rgba(255,255,255,0.25)',fontSize:10,cursor:'pointer',fontFamily:'monospace',WebkitTapHighlightColor:'transparent',touchAction:'manipulation',letterSpacing:2}}>
+                RECOMMENCER
+              </button>
+            </div>
+
+            <div style={{textAlign:'center',fontSize:8,color:'rgba(255,255,255,0.15)',letterSpacing:2,fontFamily:'monospace'}}>
+              © DAVID GARCIA · QIVIVA.NET · TOUS DROITS RÉSERVÉS · CONFIDENTIEL
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<App/>, document.getElementById('root'));
+</script>
+</body>
+</html>
