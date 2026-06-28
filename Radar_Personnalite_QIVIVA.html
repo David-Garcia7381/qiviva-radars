@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Radar de Personnalité QIVIVA</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html { height:-webkit-fill-available; }
+body {
+  background: #0C0C14;
+  font-family: 'Josefin Sans', sans-serif;
+  color: #E8E4DC;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  overflow-x: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea { -webkit-user-select:text; user-select:text; }
+
+/* Mystical background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 20%, rgba(139,90,43,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(74,58,120,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(180,140,80,0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Geometric pattern overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(60deg, transparent, transparent 80px, rgba(180,140,80,0.015) 80px, rgba(180,140,80,0.015) 81px),
+    repeating-linear-gradient(-60deg, transparent, transparent 80px, rgba(180,140,80,0.015) 80px, rgba(180,140,80,0.015) 81px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: #0C0C14; }
+::-webkit-scrollbar-thumb { background: rgba(180,140,80,0.4); border-radius: 2px; }
+
+@media print { body { display: none !important; } }
+
+button {
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+a { -webkit-tap-highlight-color: transparent; }
+svg { -webkit-backface-visibility: hidden; display: block; }
+</style>
+</head>
+<body>
+<div id="root" style="position:relative;z-index:1"></div>
+
+<script>
+if (!window.structuredClone) {
+  window.structuredClone = obj => JSON.parse(JSON.stringify(obj));
+}
+document.addEventListener('contextmenu', e => e.preventDefault());
+</script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ═══════════════════════════════════════════════════════
+// RADAR DE PERSONNALITÉ — 9 TYPES COMPLETS
+// Sources: Riso & Hudson (RHETI), Naranjo, Ichazo, Palmer
+// ═══════════════════════════════════════════════════════
+
+const TYPES = [
+  {
+    n: 1, name: "LE RÉFORMATEUR", alias: "Le Perfectionniste",
+    center: "instinct", triad: "colère",
+    color: "#C8A84B", light: "#E8C870",
+    symbol: "⚖️",
+    essence: "Intégrité · Perfection · Amélioration",
+    motivation: "Être bon, vertueux, juste. Avoir raison. Se corriger et améliorer les choses.",
+    peur: "Être mauvais, corrompu ou imparfait",
+    desir: "Avoir de l'intégrité, être équilibré et bon",
+    vice: "Colère refoulée (ressentiment)",
+    vertu: "Sérénité",
+    integration: 7, desintegration: 4,
+    wings: [9, 2],
+    stress: "Devient mélancolique, irrationnel (→4)",
+    growth: "Devient spontané, joyeux (→7)",
+    domaines: {
+      travail: "Perfectionniste · Organisé · Critique · Éthique · Procédurier",
+      relations: "Exigeant · Loyal · Difficile à satisfaire · Juste · Critique",
+      emotions: "Refoule la colère · Ressent du ressentiment · Contrôlé · Rigide",
+      corps: "Tensions dans les épaules · Mâchoire serrée · Posture droite",
+      stress: "Devient irritable puis mélancolique · Se replie · Rumination",
+      epanouissement: "Accepte l'imperfection · Trouve la joie · Se libère du contrôle"
+    },
+    bilan: "Vous portez en vous un sens aigu de la justice et une exigence intérieure puissante. Votre force est votre intégrité — votre défi est d'accepter que le monde imparfait est encore digne d'amour. Le ressentiment silencieux que vous portez mérite d'être entendu, pas réprimé. Votre chemin vers la plénitude passe par la sérénité — pas la perfection."
+  },
+  {
+    n: 2, name: "L'ALTRUISTE", alias: "Le Donneur",
+    center: "cœur", triad: "honte",
+    color: "#E74C3C", light: "#FF6B6B",
+    symbol: "❤️",
+    essence: "Amour · Don · Connexion",
+    motivation: "Être aimé, être nécessaire. Exprimer ses sentiments et s'occuper des autres.",
+    peur: "Ne pas être aimé, être indésirable",
+    desir: "Se sentir aimé et apprécié",
+    vice: "Orgueil (nier ses propres besoins)",
+    vertu: "Humilité",
+    integration: 4, desintegration: 8,
+    wings: [1, 3],
+    stress: "Devient agressif, revendicateur (→8)",
+    growth: "Prend soin de lui-même, s'introspective (→4)",
+    domaines: {
+      travail: "Serviable · Indispensable · Relationnel · Flatteur · Oublie ses limites",
+      relations: "Généreux · Fusionnel · Peut manipuler par la gentillesse · Besoin d'approbation",
+      emotions: "Émotionnel · Cache ses vrais besoins · Fierté cachée · Sensible au rejet",
+      corps: "Tensions cardiaques · Épuisement émotionnel · Sensation de vide",
+      stress: "Devient agressif quand non reconnu · Revendique · S'effondre",
+      epanouissement: "Apprend à recevoir · Exprime ses besoins · Aime sans conditions"
+    },
+    bilan: "Votre générosité est une force rare et précieuse. Mais derrière chaque don se cache parfois un besoin d'être indispensable. Votre défi le plus profond n'est pas d'apprendre à donner — vous savez déjà. C'est d'apprendre à recevoir, à exister sans être utile, à dire 'j'ai besoin' sans culpabilité. Votre cœur mérite autant qu'il donne."
+  },
+  {
+    n: 3, name: "LE BATTANT", alias: "Le Performeur",
+    center: "cœur", triad: "honte",
+    color: "#F39C12", light: "#F7B731",
+    symbol: "🏆",
+    essence: "Excellence · Succès · Efficacité",
+    motivation: "Se sentir valorisé, distingué. Impressionner les autres par ses accomplissements.",
+    peur: "Être sans valeur, échouer",
+    desir: "Se sentir précieux et méritant d'amour",
+    vice: "Tromperie (de soi et des autres)",
+    vertu: "Authenticité",
+    integration: 6, desintegration: 9,
+    wings: [2, 4],
+    stress: "Devient anxieux, méfiant (→6)",
+    growth: "Coopère, s'engage (→6)",
+    domaines: {
+      travail: "Ambitieux · Efficace · Adaptable · Image-focused · Compétitif",
+      relations: "Charmant · Superficiel en profondeur · Peur de l'intimité · Séducteur",
+      emotions: "Déconnecté de ses émotions · Identité dans le faire · Masque d'efficacité",
+      corps: "Hyperactivité · Burn-out · Corps-outil · Difficultés à s'arrêter",
+      stress: "Multiplie les projets · Perd l'authenticité · Vide intérieur",
+      epanouissement: "Découvre qui il est sans ses succès · S'autorise à échouer · Intimité vraie"
+    },
+    bilan: "Vous avez appris très tôt que vous valiez ce que vous accomplissez. Votre efficacité et votre énergie sont extraordinaires — mais elles cachent parfois une question que vous évitez : 'Qui suis-je quand je ne performe pas ?' Votre voie vers la plénitude passe par l'authenticité — montrer vos doutes, vos peurs, votre humanité. Le succès le plus grand sera d'être aimé pour ce que vous êtes, pas pour ce que vous faites."
+  },
+  {
+    n: 4, name: "L'INDIVIDUALISTE", alias: "Le Romantique",
+    center: "cœur", triad: "honte",
+    color: "#8E44AD", light: "#A569BD",
+    symbol: "🎭",
+    essence: "Identité · Profondeur · Beauté",
+    motivation: "Trouver son identité, se sentir unique et significatif.",
+    peur: "Ne pas avoir d'identité, être ordinaire",
+    desir: "Être soi-même, trouver sa signification",
+    vice: "Envie (de ce que les autres ont)",
+    vertu: "Équanimité",
+    integration: 1, desintegration: 2,
+    wings: [3, 5],
+    stress: "Devient dépendant, collant (→2)",
+    growth: "Devient discipliné, objectif (→1)",
+    domaines: {
+      travail: "Créatif · Intuitif · Idéaliste · Mélancolique · Perfectionniste émotionnel",
+      relations: "Intense · Profond · Attire-repousse · Nostalgique · Idéalise puis déçoit",
+      emotions: "Vie intérieure riche · Mélancolie chronique · Envie · Honte identitaire",
+      corps: "Tensions liées à l'émotion · Corps expressif · Sensible aux atmosphères",
+      stress: "Se replie · Devient envieux · Dramatise · Perd contact avec le réel",
+      epanouissement: "Trouve l'équanimité · Crée depuis la joie · Appartient au monde"
+    },
+    bilan: "Vous habitez le monde avec une intensité et une profondeur que peu de gens connaissent. Votre regard sur la beauté et la souffrance est un don rare. Mais vous cherchez parfois ce qui vous manque plutôt que ce que vous avez — cette mélancolie est familière, presque confortable. Votre défi est de rester présent à ce qui est, maintenant, sans chercher ailleurs. Vous êtes déjà complet."
+  },
+  {
+    n: 5, name: "L'INVESTIGATEUR", alias: "L'Observateur",
+    center: "tête", triad: "peur",
+    color: "#2980B9", light: "#5DADE2",
+    symbol: "🔭",
+    essence: "Connaissance · Compréhension · Maîtrise",
+    motivation: "Comprendre le monde, maîtriser une compétence, être capable.",
+    peur: "Être incapable, ignorant, envahi",
+    desir: "Être compétent et maîtriser son domaine",
+    vice: "Avarice (de soi, d'énergie, de temps)",
+    vertu: "Détachement sage",
+    integration: 8, desintegration: 7,
+    wings: [4, 6],
+    stress: "Devient impulsif, dispersé (→7)",
+    growth: "Devient confiant, assertif (→8)",
+    domaines: {
+      travail: "Expert · Analytique · Indépendant · Introverti · Peut procrastiner par peur",
+      relations: "Discret · Besoin d'espace · Difficile à rejoindre · Loyal en profondeur",
+      emotions: "Déconnecté de ses émotions · Les observe · Les analyse · Garde distance",
+      corps: "Économe d'énergie · Sensible aux intrusions · Vit dans sa tête",
+      stress: "Se retire · Accumule sans agir · Paralysie analytique",
+      epanouissement: "S'engage malgré l'incertitude · Partage ses connaissances · S'incarne"
+    },
+    bilan: "Votre intelligence et votre capacité d'analyse sont extraordinaires. Vous voyez ce que les autres ne voient pas, vous comprenez en profondeur ce qui est complexe. Mais cette capacité vient avec un prix — la distance. Vous observez la vie parfois plus que vous ne la vivez. Votre chemin vers la plénitude passe par l'engagement — dans les relations, dans le monde, dans votre corps. Vous avez assez pour agir."
+  },
+  {
+    n: 6, name: "LE LOYALISTE", alias: "Le Sceptique",
+    center: "tête", triad: "peur",
+    color: "#27AE60", light: "#52BE80",
+    symbol: "🛡️",
+    essence: "Sécurité · Loyauté · Courage",
+    motivation: "Avoir de la sécurité et du soutien. Se sentir en confiance.",
+    peur: "Être sans soutien, abandonné, incapable",
+    desir: "Avoir sécurité et soutien",
+    vice: "Peur (anxiété · doute · méfiance)",
+    vertu: "Courage",
+    integration: 9, desintegration: 3,
+    wings: [5, 7],
+    stress: "Devient compétitif, arrogant (→3)",
+    growth: "Devient paisible, acceptant (→9)",
+    domaines: {
+      travail: "Fiable · Loyal · Anticipe les problèmes · Peut saboter ses succès · Cherche l'autorité",
+      relations: "Loyal · Méfiant au début · Test la confiance · Intense en amitié · Anxieux",
+      emotions: "Anxiété chronique · Doute · Projection · Ambivalence · Réactif",
+      corps: "Tension nerveuse · Hypervigilance · Estomac noué · Difficultés à se détendre",
+      stress: "Doute de tout · Cherche la réassurance · Ou contre-phobique · Prend des risques",
+      epanouissement: "Fait confiance · Agit malgré la peur · Trouve la sécurité intérieure"
+    },
+    bilan: "Vous êtes l'ami le plus fiable qui soit — loyal, attentif, présent dans les moments difficiles. Votre vigilance naturelle vous a souvent protégé. Mais elle vous a aussi fatigué. Cette peur qui tourne en arrière-plan — cette voix qui doute — mérite d'être entendue, pas alimentée. Votre plus grand acte de courage n'est pas d'affronter le danger extérieur. C'est de faire confiance — à vous-même d'abord."
+  },
+  {
+    n: 7, name: "L'ENTHOUSIASTE", alias: "L'Épicurien",
+    center: "tête", triad: "peur",
+    color: "#E67E22", light: "#F0A500",
+    symbol: "🌈",
+    essence: "Joie · Liberté · Possibilités",
+    motivation: "Être heureux, satisfait, comblé. Avoir de nouvelles expériences.",
+    peur: "Être privé, souffrir, manquer",
+    desir: "Être content et comblé",
+    vice: "Gourmandise (de plaisir, d'expériences)",
+    vertu: "Sobriété",
+    integration: 5, desintegration: 1,
+    wings: [6, 8],
+    stress: "Devient perfectionniste, critique (→1)",
+    growth: "Devient focalisé, profond (→5)",
+    domaines: {
+      travail: "Créatif · Enthousiaste · Dispersé · Évite les détails · Fuit la routine",
+      relations: "Charmant · Fuit la profondeur douloureuse · Léger · Peut s'esquiver",
+      emotions: "Fuit la douleur · Recouvre tout de positivité · Anxiété sous la joie",
+      corps: "Hyperactif · Besoin de stimulation · Corps en mouvement permanent",
+      stress: "S'éparpille · Devient cynique · Critique soudain · Perd sa joie naturelle",
+      epanouissement: "Intègre la douleur · Approfondit · Trouve la joie dans le présent"
+    },
+    bilan: "Vous êtes une source d'énergie, d'idées et d'enthousiasme que les autres adorent côtoyer. Votre capacité à voir les possibilités là où les autres voient des obstacles est un don extraordinaire. Mais sous cette joie débordante se cache parfois une peur de la souffrance — une aversion pour tout ce qui est lourd, lent, douloureux. Votre maturité viendra en restant là où ça fait mal. La profondeur vous attend."
+  },
+  {
+    n: 8, name: "LE CHEF", alias: "Le Protecteur",
+    center: "instinct", triad: "colère",
+    color: "#C0392B", light: "#E74C3C",
+    symbol: "🦁",
+    essence: "Force · Protection · Vérité",
+    motivation: "Se protéger, être fort. Avoir de l'impact. Résister à la faiblesse.",
+    peur: "Être contrôlé, blessé, dominé",
+    desir: "Se protéger et décider de sa propre vie",
+    vice: "Luxure (excès · intensité · tout ou rien)",
+    vertu: "Innocence",
+    integration: 2, desintegration: 5,
+    wings: [7, 9],
+    stress: "Devient retiré, méfiant (→5)",
+    growth: "Devient généreux, ouvert (→2)",
+    domaines: {
+      travail: "Leader · Décisif · Confrontant · Protecteur des faibles · Peut intimider",
+      relations: "Intense · Loyal à mort · Teste les limites · Difficile avec la vulnérabilité",
+      emotions: "Cache la tendresse · Colère directe · Peur de la trahison · Tout ou rien",
+      corps: "Présence physique forte · Energie brute · Agit avant de penser",
+      stress: "Se ferme · Accumule · Peut exploser ou disparaître",
+      epanouissement: "Ouvre son cœur · Montre sa vulnérabilité · Protège avec douceur"
+    },
+    bilan: "Vous êtes une force de la nature — une présence qui protège, qui décide, qui avance quand les autres hésitent. Les gens vous font confiance dans les tempêtes. Mais cette armure que vous portez depuis l'enfance — cette conviction que montrer sa faiblesse est dangereux — est aussi votre plus lourde charge. Votre plénitude viendra le jour où vous vous permettrez d'être vulnérable devant quelqu'un qui mérite cette confiance."
+  },
+  {
+    n: 9, name: "LE MÉDIATEUR", alias: "Le Pacificateur",
+    center: "instinct", triad: "colère",
+    color: "#1ABC9C", light: "#48C9B0",
+    symbol: "☮️",
+    essence: "Paix · Harmonie · Union",
+    motivation: "Avoir la paix intérieure et extérieure. Maintenir l'harmonie.",
+    peur: "Perdre ses liens, être en conflit, fragmenté",
+    desir: "Avoir la paix intérieure et extérieure",
+    vice: "Paresse (de l'âme · oubli de soi)",
+    vertu: "Action juste",
+    integration: 3, desintegration: 6,
+    wings: [8, 1],
+    stress: "Devient anxieux, méfiant (→6)",
+    growth: "Devient dynamique, accompli (→3)",
+    domaines: {
+      travail: "Diplomate · Adaptable · Procrastine · Évite les conflits · Peut être effacé",
+      relations: "Pacifiste · Empathique · Oublie ses besoins · Difficile à déclencher",
+      emotions: "Engourdi émotionnellement · Calme apparent · Colère rentrée profonde",
+      corps: "Déconnecté du corps · Inertie · Besoin de rituels pour se mettre en action",
+      stress: "Se dissocie · Procrastine · Dort · S'occupe de détails futiles",
+      epanouissement: "Prend position · Agit pour lui-même · Dit non · Existe pleinement"
+    },
+    bilan: "Vous avez un don extraordinaire pour voir toutes les perspectives, pour tenir la paix dans les situations de conflit, pour accueillir sans juger. Votre présence apaise. Mais à force de vous adapter à tout le monde, vous vous êtes peut-être perdu en chemin. Qui êtes-vous quand vous n'êtes pas le miroir des autres ? Votre chemin passe par une révolution tranquille — apprendre à vouloir, à choisir, à exister."
+  }
+];
+
+// ═══════════════════════════════════════════════════════
+// QUESTIONS — 72 questions couvrant tous domaines de vie
+// 8 questions par type — stratégie par domaines
+// ═══════════════════════════════════════════════════════
+
+const QUESTIONS = [
+  // TYPE 1
+  { type:1, text:"J'ai des standards élevés et il m'est difficile d'accepter un travail mal fait, y compris le mien." },
+  { type:1, text:"Je ressens souvent une irritation intérieure face aux injustices ou à l'incompétence, même si je ne l'exprime pas toujours." },
+  { type:1, text:"Je me sens responsable d'améliorer les choses autour de moi — au travail, à la maison, dans la société." },
+  { type:1, text:"Il m'est difficile de me détendre quand quelque chose n'est pas fait correctement ou rangé à sa place." },
+  { type:1, text:"Je me critique facilement moi-même quand je ne réponds pas à mes propres attentes." },
+  { type:1, text:"J'ai une forte boussole éthique — ce qui est juste ou injuste est rarement flou pour moi." },
+  { type:1, text:"Les personnes qui manquent de rigueur ou d'organisation me frustrent profondément." },
+  { type:1, text:"Je reporte parfois des décisions parce qu'aucune option ne me semble parfaitement juste." },
+
+  // TYPE 2
+  { type:2, text:"Je remarque facilement ce dont les autres ont besoin, parfois avant qu'ils ne le réalisent eux-mêmes." },
+  { type:2, text:"Je me sens bien quand je suis utile — quand on fait appel à moi ou qu'on a besoin de moi." },
+  { type:2, text:"Il m'est difficile de dire non quand quelqu'un me demande de l'aide, même si j'en ai pas envie." },
+  { type:2, text:"Je donne beaucoup mais il m'arrive de ressentir que mes propres besoins sont ignorés ou négligés." },
+  { type:2, text:"Je suis naturellement à l'écoute et les gens se confient facilement à moi." },
+  { type:2, text:"Mon identité est fortement liée à ma capacité à prendre soin des autres." },
+  { type:2, text:"J'ai parfois du mal à identifier clairement ce que je veux, moi, indépendamment des autres." },
+  { type:2, text:"Le manque de reconnaissance pour ce que je fais peut me blesser profondément." },
+
+  // TYPE 3
+  { type:3, text:"Je suis naturellement ambitieux — j'aime fixer des objectifs et les atteindre." },
+  { type:3, text:"Je fais attention à l'image que je renvoie — ce que les autres pensent de moi compte." },
+  { type:3, text:"Je peux m'adapter et adopter le comportement attendu selon le contexte ou les personnes." },
+  { type:3, text:"Je suis efficace et j'ai tendance à me concentrer sur les résultats plutôt que sur le processus." },
+  { type:3, text:"Je me sens parfois déconnecté de mes propres émotions — je sais faire, mais pas toujours ressentir." },
+  { type:3, text:"Le succès est important pour moi — pas toujours pour l'argent, mais pour la reconnaissance." },
+  { type:3, text:"Je peux avoir du mal à ralentir, à m'arrêter — l'inactivité me met mal à l'aise." },
+  { type:3, text:"Je m'interroge parfois sur ce que je suis vraiment, au-delà de ce que j'accomplis." },
+
+  // TYPE 4
+  { type:4, text:"J'ai souvent le sentiment d'être fondamentalement différent des autres — de ne pas vraiment appartenir." },
+  { type:4, text:"Je ressens les émotions avec une grande intensité — les hauts sont très hauts, les bas très bas." },
+  { type:4, text:"J'ai tendance à idéaliser ce que je n'ai pas et à trouver ce que j'ai moins intéressant une fois obtenu." },
+  { type:4, text:"La créativité, l'authenticité et la beauté sont essentielles dans ma vie." },
+  { type:4, text:"Je m'attarde parfois sur ce qui me manque ou ce que j'aurais pu avoir — nostalgie ou envie." },
+  { type:4, text:"Je cherche des connexions profondes et significatives — les relations superficielles me laissent vide." },
+  { type:4, text:"Je peux parfois me perdre dans mes émotions ou ma vie intérieure au détriment de l'action." },
+  { type:4, text:"Mon identité est précieuse pour moi — je tiens à être unique et à ne pas me fondre dans la masse." },
+
+  // TYPE 5
+  { type:5, text:"J'ai besoin de temps seul pour recharger mes batteries — la compagnie prolongée m'épuise." },
+  { type:5, text:"Avant d'agir, je préfère comprendre en profondeur — l'analyse précède l'action." },
+  { type:5, text:"Je garde une certaine distance émotionnelle dans mes relations — je préserve mon espace intérieur." },
+  { type:5, text:"La compétence et le savoir sont des valeurs fondamentales — je n'aime pas agir sans comprendre." },
+  { type:5, text:"Je peux me sentir envahi quand on me sollicite trop ou qu'on empiète sur mon espace." },
+  { type:5, text:"Je suis plus à l'aise dans l'observation et l'analyse que dans l'action spontanée." },
+  { type:5, text:"Je partage peu mes émotions — je les traite d'abord seul, intellectuellement." },
+  { type:5, text:"Je peux procrastiner à l'infini quand je ne me sens pas suffisamment préparé." },
+
+  // TYPE 6
+  { type:6, text:"J'anticipe souvent les problèmes qui pourraient survenir — je pense aux scénarios négatifs." },
+  { type:6, text:"La loyauté est l'une de mes valeurs les plus importantes — dans l'amitié comme au travail." },
+  { type:6, text:"J'ai tendance à douter de mes propres jugements et à chercher la confirmation des autres." },
+  { type:6, text:"Je peux être méfiant face à l'autorité — je teste souvent la fiabilité des gens avant de leur faire confiance." },
+  { type:6, text:"L'anxiété est une compagne familière — même quand tout va bien, je reste vigilant." },
+  { type:6, text:"Je m'engage profondément dans ce en quoi je crois — groupes, causes, personnes." },
+  { type:6, text:"Face à une décision importante, je peux tourner en rond longtemps avant de m'engager." },
+  { type:6, text:"Je valorise la sécurité — financière, relationnelle, professionnelle." },
+
+  // TYPE 7
+  { type:7, text:"Je suis naturellement attiré par les nouvelles expériences, les idées, les projets." },
+  { type:7, text:"J'ai du mal à rester focalisé sur une seule chose — il y a toujours quelque chose de plus intéressant." },
+  { type:7, text:"Je préfère rester positif et évite autant que possible ce qui est lourd, douloureux ou ennuyeux." },
+  { type:7, text:"Mon esprit fonctionne rapidement — je fais des connexions entre des idées que personne n'associe." },
+  { type:7, text:"Je peux avoir du mal à tenir mes engagements quand ils deviennent routiniers ou contraignants." },
+  { type:7, text:"La liberté est fondamentale pour moi — être enfermé dans une routine ou une obligation me pèse." },
+  { type:7, text:"Je repousse parfois les décisions difficiles en me focalisant sur autre chose." },
+  { type:7, text:"Les autres me voient souvent comme enthousiaste et énergique — c'est ma façade naturelle." },
+
+  // TYPE 8
+  { type:8, text:"Je prends facilement le contrôle dans les situations — je n'attends pas que quelqu'un d'autre décide." },
+  { type:8, text:"La faiblesse et l'hypocrisie me repoussent profondément — j'aime la franchise directe." },
+  { type:8, text:"Je protège instinctivement les personnes vulnérables ou injustement traitées." },
+  { type:8, text:"J'ai une énergie intense — je vis fort, je parle fort, j'aime les défis." },
+  { type:8, text:"Il m'est difficile de montrer ma vulnérabilité — la tendresse reste souvent cachée." },
+  { type:8, text:"Je résiste naturellement à l'autorité ou aux règles que je n'ai pas choisies." },
+  { type:8, text:"Quand je décide quelque chose, j'y vais — l'hésitation m'est étrangère." },
+  { type:8, text:"Mes relations les plus profondes sont celles où je peux être moi-même, sans masque." },
+
+  // TYPE 9
+  { type:9, text:"J'évite naturellement les conflits — l'harmonie dans mes relations est très importante pour moi." },
+  { type:9, text:"Je m'adapte facilement aux autres et à leur rythme — parfois au détriment de mes propres besoins." },
+  { type:9, text:"Je peux procrastiner sur des choses importantes tout en m'occupant de détails moins urgents." },
+  { type:9, text:"Je comprends facilement les différentes perspectives — il m'est difficile de prendre fortement parti." },
+  { type:9, text:"Je me sens parfois absent à moi-même — je ne sais pas toujours ce que je veux vraiment." },
+  { type:9, text:"Ma colère est rare en surface — mais elle existe et peut ressortir de façon inattendue." },
+  { type:9, text:"La présence des personnes que j'aime me suffit — je n'ai pas besoin de beaucoup pour être heureux." },
+  { type:9, text:"J'ai parfois du mal à me mettre en action, même pour des choses qui me tiennent à cœur." },
+];
+
+// Shuffle questions
+function shuffleQuestions(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Compute scores
+function computeScores(answers, questions) {
+  const raw = {};
+  TYPES.forEach(t => raw[t.n] = { sum: 0, count: 0 });
+  questions.forEach((q, i) => {
+    if (answers[i] !== undefined) {
+      raw[q.type].sum += answers[i];
+      raw[q.type].count++;
+    }
+  });
+  const scores = {};
+  TYPES.forEach(t => {
+    scores[t.n] = raw[t.n].count > 0
+      ? Math.round((raw[t.n].sum / (raw[t.n].count * 10)) * 100) / 10
+      : 0;
+  });
+  return scores;
+}
+
+function getTopTypes(scores, n = 3) {
+  return [...TYPES]
+    .sort((a, b) => scores[b.n] - scores[a.n])
+    .slice(0, n);
+}
+
+// ═══════════════════════════════════════════════════════
+// ENNEAGRAM SVG
+// ═══════════════════════════════════════════════════════
+function EnneagramSVG({ scores, dominant }) {
+  const S = 320, cx = 160, cy = 160, r = 120;
+  const n = 9;
+  const ang = i => (Math.PI * 2 * i / n) - Math.PI / 2;
+  const pt = (i, v) => ({
+    x: cx + (v / 10) * r * Math.cos(ang(i)),
+    y: cy + (v / 10) * r * Math.sin(ang(i))
+  });
+  const lp = i => ({
+    x: cx + (r + 28) * Math.cos(ang(i)),
+    y: cy + (r + 28) * Math.sin(ang(i))
+  });
+
+  // Inner connections of enneagram
+  const connections = [[1,4],[4,2],[2,8],[8,5],[5,7],[7,1],[3,6],[6,9],[9,3]];
+  const triangle = [[3,6],[6,9],[9,3]];
+  const hexad = [[1,4],[4,2],[2,8],[8,5],[5,7],[7,1]];
+
+  const gridLevels = [2,4,6,8,10];
+  const grids = gridLevels.map(lv =>
+    TYPES.map((_,i) => pt(i, lv)).map(p=>`${p.x},${p.y}`).join(' ')
+  );
+
+  const scorePts = TYPES.map((t,i) => {
+    const p = pt(i, scores[t.n] || 0);
+    return `${p.x},${p.y}`;
+  }).join(' ');
+
+  return (
+    <svg width={S+60} height={S+60} viewBox={`-30 -30 ${S+60} ${S+60}`} style={{maxWidth:'100%'}}>
+      {/* Grid */}
+      {grids.map((g,gi) => (
+        <polygon key={gi} points={g} fill="none" stroke="rgba(180,140,80,0.06)" strokeWidth="1"/>
+      ))}
+      {/* Axis lines */}
+      {TYPES.map((_,i) => {
+        const e = pt(i, 10);
+        return <line key={i} x1={cx} y1={cy} x2={e.x} y2={e.y} stroke="rgba(180,140,80,0.08)" strokeWidth="1"/>;
+      })}
+      {/* Enneagram inner lines - hexad */}
+      {hexad.map(([a,b], i) => {
+        const pa = pt(a-1, 10), pb = pt(b-1, 10);
+        return <line key={i} x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="rgba(180,140,80,0.06)" strokeWidth="0.5" strokeDasharray="4,4"/>;
+      })}
+      {/* Triangle */}
+      {triangle.map(([a,b], i) => {
+        const pa = pt(a-1, 10), pb = pt(b-1, 10);
+        return <line key={i} x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="rgba(180,140,80,0.06)" strokeWidth="0.5" strokeDasharray="4,4"/>;
+      })}
+      {/* Score polygon */}
+      <polygon
+        points={scorePts}
+        fill="rgba(180,140,80,0.08)"
+        stroke="rgba(180,140,80,0.5)"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      {/* Score dots */}
+      {TYPES.map((t,i) => {
+        const p = pt(i, scores[t.n] || 0);
+        const isDom = dominant && dominant.n === t.n;
+        return (
+          <circle key={i} cx={p.x} cy={p.y} r={isDom ? 7 : 4}
+            fill={isDom ? t.color : "rgba(180,140,80,0.6)"}
+            stroke={isDom ? "#0C0C14" : "rgba(180,140,80,0.3)"}
+            strokeWidth={isDom ? 2 : 1}
+          />
+        );
+      })}
+      {/* Labels */}
+      {TYPES.map((t,i) => {
+        const l = lp(i);
+        const isDom = dominant && dominant.n === t.n;
+        return (
+          <g key={i}>
+            <text x={l.x} y={l.y-6} textAnchor="middle"
+              fill={isDom ? t.color : "rgba(180,140,80,0.5)"}
+              fontSize={isDom ? 11 : 9}
+              fontWeight={isDom ? "bold" : "normal"}
+              fontFamily="Josefin Sans, sans-serif"
+              letterSpacing="1"
+            >{t.n}</text>
+            <text x={l.x} y={l.y+5} textAnchor="middle"
+              fill={isDom ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)"}
+              fontSize="6"
+              fontFamily="Josefin Sans, sans-serif"
+            >{scores[t.n]||0}/10</text>
+          </g>
+        );
+      })}
+      {/* Center */}
+      <circle cx={cx} cy={cy} r="3" fill="rgba(180,140,80,0.3)"/>
+    </svg>
+  );
+}
+
+// ═══════════════════════════════════════════════════════
+// MAIN APP
+// ═══════════════════════════════════════════════════════
+function App() {
+  const [step, setStep] = useState('intro');
+  const [shuffled] = useState(() => shuffleQuestions(QUESTIONS));
+  const [current, setCurrent] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [scores, setScores] = useState({});
+  const [firstName, setFirstName] = useState('');
+  const [email, setEmail] = useState('');
+  const [hover, setHover] = useState(null);
+  const [sent, setSent] = useState(false);
+  const [animKey, setAnimKey] = useState(0);
+
+  const total = shuffled.length;
+  const prog = (current / total) * 100;
+
+  const handleAnswer = val => {
+    const newAns = { ...answers, [current]: val };
+    setAnswers(newAns);
+    if (current < total - 1) {
+      setAnimKey(k => k + 1);
+      setCurrent(c => c + 1);
+    } else {
+      const sc = computeScores(newAns, shuffled);
+      setScores(sc);
+      setStep('results');
+    }
+  };
+
+  const top3 = getTopTypes(scores);
+  const dominant = top3[0];
+
+  const sendReport = () => {
+    if (!email) return;
+    const top = top3.map((t, i) => `${['Principal','Aile/Secondaire','Tertiaire'][i]}: Type ${t.n} — ${t.name} (${scores[t.n]}/10)`).join('\n');
+    const body = encodeURIComponent(
+      `PROFIL RADAR DE PERSONNALITÉ\n\n` +
+      `Prénom: ${firstName}\nEmail: ${email}\n\n` +
+      `TYPE DOMINANT: ${dominant ? `Type ${dominant.n} — ${dominant.name}` : 'N/A'}\n\n` +
+      `TOP 3 TYPES:\n${top}\n\n` +
+      `CENTRE D'ÉNERGIE: ${dominant?.center || 'N/A'}\n` +
+      `TRIADE: ${dominant?.triad || 'N/A'}\n\n` +
+      `BILAN:\n${dominant?.bilan || ''}`
+    );
+    window.open(`mailto:contact@qiviva.net?subject=Radar de Personnalité QIVIVA — ${firstName}&body=${body}`);
+    setSent(true);
+  };
+
+  const reset = () => {
+    setStep('intro'); setCurrent(0); setAnswers({});
+    setScores({}); setFirstName(''); setEmail(''); setSent(false);
+  };
+
+  const C = {
+    gold: '#B48C50',
+    goldLight: '#D4A862',
+    dim: 'rgba(180,140,80,0.3)',
+    bg: '#0C0C14',
+    card: 'rgba(255,255,255,0.07)',
+    border: 'rgba(180,140,80,0.15)',
+  };
+
+  const serif = "'Cormorant Garamond', serif";
+  const sans = "'Josefin Sans', sans-serif";
+
+  // ── INTRO ──────────────────────────────────────────
+  if (step === 'intro') return (
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 20px'}}>
+
+      {/* Header */}
+      <div style={{textAlign:'center',marginBottom:40}}>
+        <div style={{fontSize:11,letterSpacing:6,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:12}}>QIVIVA · DAVID GARCIA</div>
+        <div style={{fontSize:52,fontFamily:serif,fontWeight:300,color:C.goldLight,letterSpacing:4,lineHeight:1,marginBottom:6}}>Radar de Personnalité</div>
+        <div style={{fontSize:13,letterSpacing:4,color:'rgba(255,255,255,0.78)',fontFamily:sans,marginBottom:4}}>PROFIL DE PERSONNALITÉ</div>
+        <div style={{fontSize:10,letterSpacing:2,color:'rgba(200,168,75,0.75)',fontFamily:sans}}>TOUS DOMAINES DE VIE</div>
+      </div>
+
+      {/* Enneagram symbol */}
+      <div style={{marginBottom:32,opacity:0.6}}>
+        <svg width={120} height={120} viewBox="0 0 120 120">
+          <circle cx={60} cy={60} r={55} fill="none" stroke={C.gold} strokeWidth="0.5" strokeOpacity="0.4"/>
+          {[0,1,2,3,4,5,6,7,8].map(i => {
+            const a = Math.PI*2*i/9 - Math.PI/2;
+            return <circle key={i} cx={60+55*Math.cos(a)} cy={60+55*Math.sin(a)} r="4" fill={C.gold} fillOpacity="0.5"/>;
+          })}
+          {[[1,4],[4,2],[2,8],[8,5],[5,7],[7,1]].map(([a,b],i) => {
+            const aa = Math.PI*2*(a-1)/9 - Math.PI/2;
+            const ba = Math.PI*2*(b-1)/9 - Math.PI/2;
+            return <line key={i} x1={60+55*Math.cos(aa)} y1={60+55*Math.sin(aa)} x2={60+55*Math.cos(ba)} y2={60+55*Math.sin(ba)} stroke={C.gold} strokeWidth="0.5" strokeOpacity="0.3"/>;
+          })}
+          {[[3,6],[6,9],[9,3]].map(([a,b],i) => {
+            const aa = Math.PI*2*(a-1)/9 - Math.PI/2;
+            const ba = Math.PI*2*(b-1)/9 - Math.PI/2;
+            return <line key={i} x1={60+55*Math.cos(aa)} y1={60+55*Math.sin(aa)} x2={60+55*Math.cos(ba)} y2={60+55*Math.sin(ba)} stroke={C.gold} strokeWidth="0.5" strokeOpacity="0.3"/>;
+          })}
+        </svg>
+      </div>
+
+      {/* Description */}
+      <div style={{maxWidth:480,marginBottom:32,textAlign:'center'}}>
+        <p style={{fontSize:14,fontFamily:serif,fontStyle:'italic',color:'rgba(255,255,255,0.95)',lineHeight:1.9,marginBottom:16}}>
+          Cet outil est une carte de la psyché humaine en 9 profils fondamentaux — un système millénaire validé par la psychologie contemporaine.
+        </p>
+        <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
+          {[
+            {v:"Riso & Hudson", s:"RHETI"},
+            {v:"Naranjo", s:"Théorie"},
+            {v:"Don Richard Riso", s:"Points Niveaux"},
+          ].map(r => (
+            <div key={r.s} style={{fontSize:9,letterSpacing:2,color:'rgba(200,168,75,0.75)',fontFamily:sans,background:'rgba(180,140,80,0.06)',border:'1px solid rgba(180,140,80,0.35)',padding:'4px 10px',borderRadius:2}}>
+              {r.v} · {r.s}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Form */}
+      <div style={{width:'100%',maxWidth:420,marginBottom:24}}>
+        <div style={{fontSize:9,letterSpacing:3,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:8}}>VOTRE PRÉNOM</div>
+        <input value={firstName} onChange={e=>setFirstName(e.target.value)} placeholder="Prénom..."
+          style={{width:'100%',padding:'13px 16px',background:'rgba(180,140,80,0.04)',border:'1px solid rgba(180,140,80,0.35)',borderRadius:2,color:'#E8E4DC',fontSize:14,fontFamily:serif,outline:'none',marginBottom:16,fontSize:'16px'}}/>
+        <div style={{fontSize:9,letterSpacing:3,color:C.gold,fontFamily:sans,marginBottom:8}}>EMAIL — OBLIGATOIRE *</div>
+        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="votre@email.com" type="email"
+          style={{width:'100%',padding:'13px 16px',background:'rgba(180,140,80,0.04)',border:'1px solid rgba(180,140,80,0.35)',borderRadius:2,color:'#E8E4DC',fontSize:14,fontFamily:serif,outline:'none',fontSize:'16px'}}/>
+      </div>
+
+      <button onClick={()=>{
+        if(!email||!email.includes('@')){
+          alert('⚠️ Veuillez entrer votre email pour accéder au test.');
+          return;
+        }
+        setStep('questionnaire');
+      }} style={{
+        padding:'16px 48px',
+        background: email&&email.includes('@') ? `rgba(180,140,80,0.1)` : 'transparent',
+        border:`1px solid ${email&&email.includes('@') ? C.gold : 'rgba(180,140,80,0.2)'}`,
+        borderRadius:2,
+        color: email&&email.includes('@') ? C.goldLight : 'rgba(180,140,80,0.3)',
+        fontSize:11,fontFamily:sans,letterSpacing:4,
+        transition:'all 0.2s'
+      }}>
+        COMMENCER MON PROFIL →
+      </button>
+      <div style={{marginTop:12,fontSize:9,color:'rgba(200,168,75,0.75)',fontFamily:sans,letterSpacing:2}}>
+        72 QUESTIONS · 9 TYPES · ~12 MINUTES
+      </div>
+
+      <div style={{position:'fixed',bottom:8,left:0,right:0,textAlign:'center',fontSize:8,color:'rgba(180,140,80,0.15)',fontFamily:sans,letterSpacing:2}}>
+        © DAVID GARCIA · QIVIVA.NET · TOUS DROITS RÉSERVÉS
+      </div>
+    </div>
+  );
+
+  // ── QUESTIONNAIRE ──────────────────────────────────
+  if (step === 'questionnaire') {
+    const q = shuffled[current];
+    return (
+      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',padding:'24px 20px',maxWidth:640,margin:'0 auto'}}>
+
+        {/* Progress */}
+        <div style={{marginBottom:32,paddingTop:'env(safe-area-inset-top)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+            <span style={{fontSize:9,letterSpacing:3,color:'rgba(200,168,75,0.75)',fontFamily:sans}}>{current+1} / {total}</span>
+            <span style={{fontSize:9,letterSpacing:3,color:C.gold,fontFamily:sans}}>{Math.round(prog)}%</span>
+          </div>
+          <div style={{height:1,background:'rgba(180,140,80,0.1)'}}>
+            <div style={{height:'100%',background:`linear-gradient(90deg,${C.gold},${C.goldLight})`,width:`${prog}%`,transition:'width 0.4s ease'}}/>
+          </div>
+        </div>
+
+        {/* Question area */}
+        <div style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center'}}>
+          <div style={{
+            background:'rgba(180,140,80,0.03)',
+            border:'1px solid rgba(180,140,80,0.35)',
+            borderRadius:2,
+            padding:'32px 28px',
+            marginBottom:40
+          }}>
+            <div style={{fontSize:9,letterSpacing:3,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:20}}>AFFIRMATION {current+1}</div>
+            <p style={{fontSize:18,fontFamily:serif,fontWeight:300,color:'rgba(255,255,255,0.95)',lineHeight:1.8}}>
+              {q.text}
+            </p>
+          </div>
+
+          {/* Rating */}
+          <div style={{marginBottom:16}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}>
+              <span style={{fontSize:9,color:'rgba(200,168,75,0.75)',fontFamily:sans,letterSpacing:2,fontStyle:'italic'}}>Pas du tout moi</span>
+              <span style={{fontSize:9,color:'rgba(200,168,75,0.75)',fontFamily:sans,letterSpacing:2,fontStyle:'italic'}}>Tout à fait moi</span>
+            </div>
+            <div style={{display:'flex',gap:6}}>
+              {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                <button key={n}
+                  onMouseEnter={()=>setHover(n)}
+                  onMouseLeave={()=>setHover(null)}
+                  onClick={()=>handleAnswer(n)}
+                  style={{
+                    flex:1,
+                    height:44,
+                    background: hover && n <= hover ? `rgba(180,140,80,${0.1 + (n/10)*0.3})` : 'rgba(180,140,80,0.04)',
+                    border: `1px solid ${hover && n <= hover ? C.gold : 'rgba(180,140,80,0.12)'}`,
+                    borderRadius:2,
+                    color: hover && n <= hover ? C.goldLight : 'rgba(180,140,80,0.4)',
+                    fontSize:12, fontFamily:sans, fontWeight:hover && n <= hover ? '600' : '300',
+                    transition:'all 0.1s',
+                  }}
+                >{n}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{textAlign:'center',fontSize:9,color:'rgba(255,255,255,0.62)',fontFamily:serif,fontStyle:'italic'}}>
+            Répondez spontanément · La première impression est la plus juste
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── RESULTS ────────────────────────────────────────
+  if (step === 'results' && dominant) {
+    const second = top3[1];
+    const third = top3[2];
+
+    return (
+      <div style={{padding:'24px 20px',maxWidth:800,margin:'0 auto'}}>
+
+        {/* Header */}
+        <div style={{textAlign:'center',marginBottom:40,paddingTop:'env(safe-area-inset-top)'}}>
+          <div style={{fontSize:9,letterSpacing:4,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:16}}>VOTRE RADAR DE PERSONNALITÉ</div>
+          {firstName && <div style={{fontSize:14,fontFamily:serif,fontStyle:'italic',color:'rgba(255,255,255,0.8)',marginBottom:20}}>Bonjour {firstName}</div>}
+
+          {/* Dominant type */}
+          <div style={{
+            display:'inline-block',
+            border:`1px solid ${dominant.color}`,
+            borderRadius:2,
+            padding:'24px 40px',
+            background:`${dominant.color}08`,
+            marginBottom:16,
+            position:'relative'
+          }}>
+            <div style={{fontSize:48,marginBottom:8}}>{dominant.symbol}</div>
+            <div style={{fontSize:11,letterSpacing:4,color:dominant.color,fontFamily:sans,marginBottom:4}}>TYPE {dominant.n}</div>
+            <div style={{fontSize:28,fontFamily:serif,fontWeight:300,color:'#E8E4DC',letterSpacing:2,marginBottom:4}}>{dominant.name}</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,0.8)',fontFamily:sans,letterSpacing:2}}>{dominant.alias}</div>
+          </div>
+
+          {/* Center & triad */}
+          <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
+            <div style={{fontSize:9,letterSpacing:2,fontFamily:sans,padding:'5px 14px',border:'1px solid rgba(180,140,80,0.35)',color:'rgba(200,168,75,0.75)'}}>
+              CENTRE · {dominant.center.toUpperCase()}
+            </div>
+            <div style={{fontSize:9,letterSpacing:2,fontFamily:sans,padding:'5px 14px',border:'1px solid rgba(180,140,80,0.35)',color:'rgba(200,168,75,0.75)'}}>
+              TRIADE · {dominant.triad.toUpperCase()}
+            </div>
+            <div style={{fontSize:9,letterSpacing:2,fontFamily:sans,padding:'5px 14px',border:'1px solid rgba(180,140,80,0.35)',color:'rgba(200,168,75,0.75)'}}>
+              SCORE · {scores[dominant.n]}/10
+            </div>
+          </div>
+        </div>
+
+        {/* Radar + scores */}
+        <div style={{display:'flex',gap:24,marginBottom:32,flexWrap:'wrap',alignItems:'flex-start'}}>
+          <div style={{flex:'0 0 auto',border:'1px solid rgba(180,140,80,0.35)',padding:16,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <EnneagramSVG scores={scores} dominant={dominant}/>
+          </div>
+          <div style={{flex:1,minWidth:220}}>
+            <div style={{fontSize:9,letterSpacing:3,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:16}}>SCORES PAR TYPE</div>
+            {[...TYPES].sort((a,b)=>scores[b.n]-scores[a.n]).map((t,i) => (
+              <div key={t.n} style={{marginBottom:10}}>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:4,alignItems:'center'}}>
+                  <span style={{fontSize:10,fontFamily:sans,letterSpacing:1,color:i<3?t.color:'rgba(255,255,255,0.92)'}}>
+                    {i===0?'▶ ':''}T{t.n} · {t.name.split(' ')[1]||t.name}
+                  </span>
+                  <span style={{fontSize:10,color:i<3?t.color:'rgba(255,255,255,0.68)',fontFamily:sans}}>{scores[t.n]}/10</span>
+                </div>
+                <div style={{height:2,background:'rgba(255,255,255,0.05)'}}>
+                  <div style={{height:'100%',background:i<3?t.color:'rgba(255,255,255,0.55)',width:`${(scores[t.n]/10)*100}%`,transition:'width 1s ease'}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top 3 */}
+        <div style={{marginBottom:32}}>
+          <div style={{fontSize:9,letterSpacing:3,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:16}}>VOTRE CONSTELLATION DE TYPES</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
+            {[
+              {t:dominant, label:'TYPE DOMINANT', rank:1},
+              {t:second, label:'AILE / SECONDAIRE', rank:2},
+              {t:third, label:'INFLUENCE TERTIAIRE', rank:3},
+            ].map(({t,label,rank}) => t && (
+              <div key={t.n} style={{
+                border:`1px solid ${rank===1?t.color:'rgba(180,140,80,0.35)'}`,
+                padding:'16px 14px',
+                background:rank===1?`${t.color}06`:'transparent',
+                borderRadius:2
+              }}>
+                <div style={{fontSize:8,letterSpacing:2,color:rank===1?t.color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:8}}>{label}</div>
+                <div style={{fontSize:22,marginBottom:6}}>{t.symbol}</div>
+                <div style={{fontSize:10,letterSpacing:3,color:t.color,fontFamily:sans,marginBottom:2}}>TYPE {t.n}</div>
+                <div style={{fontSize:12,fontFamily:serif,color:'rgba(255,255,255,0.7)',marginBottom:4}}>{t.name}</div>
+                <div style={{fontSize:9,color:'rgba(200,168,75,0.75)',fontFamily:sans}}>{scores[t.n]}/10</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Domaines de vie */}
+        <div style={{marginBottom:32}}>
+          <div style={{fontSize:9,letterSpacing:3,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:16}}>VOTRE PROFIL PAR DOMAINE DE VIE</div>
+          {[
+            {key:'travail', label:'TRAVAIL & PERFORMANCE', icon:'💼'},
+            {key:'relations', label:'RELATIONS & LIENS', icon:'🤝'},
+            {key:'emotions', label:'VIE ÉMOTIONNELLE', icon:'✨'},
+            {key:'corps', label:'CORPS & ÉNERGIE', icon:'💚'},
+            {key:'stress', label:'STRESS & VULNÉRABILITÉS', icon:'⚡'},
+            {key:'epanouissement', label:'CHEMIN D\'ÉPANOUISSEMENT', icon:'🌟'},
+          ].map(d => (
+            <div key={d.key} style={{
+              borderLeft:`2px solid ${dominant.color}`,
+              paddingLeft:16,
+              paddingTop:12,
+              paddingBottom:12,
+              marginBottom:12,
+              background:'rgba(255,255,255,0.05)',
+              borderRadius:'0 2px 2px 0'
+            }}>
+              <div style={{fontSize:9,letterSpacing:3,color:dominant.color,fontFamily:sans,marginBottom:6}}>
+                {d.icon} {d.label}
+              </div>
+              <p style={{fontSize:13,fontFamily:serif,color:'rgba(255,255,255,0.88)',lineHeight:1.7}}>
+                {dominant.domaines[d.key]}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Dynamiques */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:32}}>
+          <div style={{border:'1px solid rgba(180,140,80,0.35)',padding:16}}>
+            <div style={{fontSize:9,letterSpacing:2,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:10}}>SOUS STRESS → TYPE {dominant.desintegration}</div>
+            <div style={{fontSize:12,fontFamily:serif,color:'rgba(255,130,130,0.9)',lineHeight:1.6}}>{dominant.stress}</div>
+          </div>
+          <div style={{border:'1px solid rgba(180,140,80,0.35)',padding:16}}>
+            <div style={{fontSize:9,letterSpacing:2,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:10}}>EN CROISSANCE → TYPE {dominant.integration}</div>
+            <div style={{fontSize:12,fontFamily:serif,color:'rgba(100,220,160,0.9)',lineHeight:1.6}}>{dominant.growth}</div>
+          </div>
+        </div>
+
+        {/* Wings */}
+        <div style={{border:'1px solid rgba(180,140,80,0.35)',padding:20,marginBottom:32}}>
+          <div style={{fontSize:9,letterSpacing:3,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:10}}>AILES POSSIBLES</div>
+          <div style={{display:'flex',gap:12}}>
+            {dominant.wings.map(w => {
+              const wt = TYPES.find(t=>t.n===w);
+              return (
+                <div key={w} style={{flex:1,textAlign:'center',padding:'12px 8px',background:`${wt.color}08`,border:`1px solid ${wt.color}30`}}>
+                  <div style={{fontSize:16,marginBottom:4}}>{wt.symbol}</div>
+                  <div style={{fontSize:9,letterSpacing:2,color:wt.color,fontFamily:sans}}>AILE {w}</div>
+                  <div style={{fontSize:11,fontFamily:serif,color:'rgba(255,255,255,0.95)',marginTop:2}}>{wt.name}</div>
+                  <div style={{fontSize:10,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginTop:2}}>Score: {scores[w]}/10</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Core dynamics */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:12,marginBottom:32}}>
+          {[
+            {label:'MOTIVATION PROFONDE', val:dominant.motivation, color:'rgba(180,140,80,0.6)'},
+            {label:'PEUR FONDAMENTALE', val:dominant.peur, color:'rgba(192,57,43,0.6)'},
+            {label:'DÉSIR PROFOND', val:dominant.desir, color:'rgba(39,174,96,0.6)'},
+            {label:'VICE / PASSION', val:dominant.vice, color:'rgba(142,68,173,0.6)'},
+            {label:'VERTU / ESSENCE', val:dominant.vertu, color:'rgba(180,140,80,0.6)'},
+            {label:'ESSENCE', val:dominant.essence, color:'rgba(26,188,156,0.6)'},
+          ].map(d => (
+            <div key={d.label} style={{borderBottom:`1px solid ${'rgba(180,140,80,0.35)'}`,paddingBottom:12,paddingTop:4}}>
+              <div style={{fontSize:8,letterSpacing:2,color:d.color,fontFamily:sans,marginBottom:6}}>{d.label}</div>
+              <p style={{fontSize:12,fontFamily:serif,color:'rgba(255,255,255,0.6)',lineHeight:1.6}}>{d.val}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* BILAN PERCUTANT */}
+        <div style={{
+          border:`1px solid ${dominant.color}`,
+          padding:'28px 24px',
+          marginBottom:24,
+          background:`${dominant.color}05`,
+          position:'relative'
+        }}>
+          <div style={{
+            position:'absolute',top:-10,left:20,
+            background:'#0C0C14',
+            padding:'0 12px',
+            fontSize:9,letterSpacing:3,color:dominant.color,fontFamily:sans
+          }}>BILAN SOMMAIRE</div>
+          <p style={{fontSize:16,fontFamily:serif,fontStyle:'italic',fontWeight:300,color:'rgba(255,255,255,0.92)',lineHeight:1.9}}>
+            {dominant.bilan}
+          </p>
+        </div>
+
+        {/* Outils QIVIVA recommandés */}
+        <div style={{marginBottom:24,border:'1px solid rgba(180,140,80,0.35)',padding:'20px'}}>
+          <div style={{fontSize:9,letterSpacing:3,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:14}}>ACCOMPAGNEMENT QIVIVA RECOMMANDÉ</div>
+          {dominant.center === 'tête' && (
+            <p style={{fontSize:12,fontFamily:serif,color:'rgba(255,255,255,0.95)',lineHeight:1.8}}>
+              Centre mental dominant · <strong style={{color:C.goldLight}}>Cohérence cardiaque</strong> pour ancrer le mental dans le corps ·
+              <strong style={{color:C.goldLight}}> Psych-K®</strong> pour reprogrammer les croyances anxieuses ·
+              <strong style={{color:C.goldLight}}> Sophrologie</strong> pour calmer le flot des pensées
+            </p>
+          )}
+          {dominant.center === 'cœur' && (
+            <p style={{fontSize:12,fontFamily:serif,color:'rgba(255,255,255,0.95)',lineHeight:1.8}}>
+              Centre émotionnel dominant · <strong style={{color:C.goldLight}}>Kinésiologie</strong> pour libérer les charges émotionnelles ·
+              <strong style={{color:C.goldLight}}> Psych-K®</strong> pour travailler l'image de soi ·
+              <strong style={{color:C.goldLight}}> Hypnose</strong> pour accéder aux besoins profonds
+            </p>
+          )}
+          {dominant.center === 'instinct' && (
+            <p style={{fontSize:12,fontFamily:serif,color:'rgba(255,255,255,0.95)',lineHeight:1.8}}>
+              Centre instinctif dominant · <strong style={{color:C.goldLight}}>Techniques respiratoires</strong> pour réguler l'énergie vitale ·
+              <strong style={{color:C.goldLight}}> Kinésiologie</strong> pour libérer les tensions corporelles ·
+              <strong style={{color:C.goldLight}}> Cohérence cardiaque</strong> pour canaliser l'intensité
+            </p>
+          )}
+        </div>
+
+        {/* Send + Calendly */}
+        <div style={{border:'1px solid rgba(180,140,80,0.35)',padding:24,marginBottom:16}}>
+          <div style={{fontSize:9,letterSpacing:3,color:'rgba(200,168,75,0.75)',fontFamily:sans,marginBottom:12}}>📩 RECEVOIR MON PROFIL COMPLET</div>
+          {!sent ? (
+            <div>
+              <button onClick={sendReport} style={{
+                width:'100%',padding:'14px',background:'transparent',
+                border:`1px solid ${dominant.color}`,
+                color:dominant.color,fontSize:10,fontFamily:sans,letterSpacing:3,
+                transition:'all 0.2s'
+              }}>
+                ENVOYER MON PROFIL À DAVID GARCIA →
+              </button>
+            </div>
+          ) : (
+            <div style={{textAlign:'center',padding:'12px 0'}}>
+              <div style={{fontSize:20,marginBottom:6}}>✓</div>
+              <div style={{fontSize:10,color:'rgba(100,200,150,0.8)',letterSpacing:3,fontFamily:sans}}>PROFIL ENVOYÉ</div>
+              <div style={{fontSize:11,fontFamily:serif,fontStyle:'italic',color:'rgba(255,255,255,0.92)',marginTop:4}}>David Garcia vous contactera dans les 48h.</div>
+            </div>
+          )}
+        </div>
+
+        <a href="https://calendly.com/dvdk7381" target="_blank" style={{
+          display:'block',padding:'14px',
+          border:'1px solid rgba(180,140,80,0.35)',
+          color:C.goldLight,fontSize:10,fontFamily:sans,letterSpacing:3,
+          textDecoration:'none',textAlign:'center',marginBottom:16,
+          transition:'all 0.2s'
+        }}>
+          📅 RÉSERVER UN ENTRETIEN DE DÉCODAGE →
+        </a>
+
+        <div style={{display:'flex',gap:10,marginBottom:24}}>
+          <a href="https://www.qiviva.net" target="_blank" style={{flex:1,padding:'11px',border:'1px solid rgba(180,140,80,0.35)',color:'rgba(200,168,75,0.75)',fontSize:9,letterSpacing:2,textDecoration:'none',textAlign:'center',fontFamily:sans}}>
+            QIVIVA.NET
+          </a>
+          <button onClick={reset} style={{flex:1,padding:'11px',background:'transparent',border:`1px solid rgba(255,255,255,0.06)`,color:'rgba(255,255,255,0.68)',fontSize:9,letterSpacing:2,fontFamily:sans}}>
+            RECOMMENCER
+          </button>
+        </div>
+
+        <div style={{textAlign:'center',fontSize:8,color:'rgba(180,140,80,0.12)',letterSpacing:2,fontFamily:sans,marginBottom:24}}>
+          © DAVID GARCIA · RADAR DE PERSONNALITÉ · TOUS DROITS RÉSERVÉS
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+ReactDOM.render(<App/>, document.getElementById('root'));
+</script>
+</body>
+</html>
